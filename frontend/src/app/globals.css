@@ -1,0 +1,55 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #135bec;
+  --color-primary-dark: #137fec;
+  --color-primary-yellow: #f9f506;
+  --color-background-light: #f6f6f8;
+  --color-background-dark: #101622;
+  --color-surface-dark: #1e293b;
+  --color-text-main: #e2e8f0;
+  --color-text-muted: #94a3b8;
+  --color-highlight: rgba(19, 127, 236, 0.15);
+
+  --font-display: "Inter", sans-serif;
+  --font-lexend: "Lexend", sans-serif;
+  --font-spline: "Spline Sans", sans-serif;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 20px; }
+.dark ::-webkit-scrollbar-track { background: #101922; }
+.dark ::-webkit-scrollbar-thumb { background: #334155; }
+
+/* Animations */
+.animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
+.animate-fade-in-up { animation: fadeInUp 0.3s ease-out forwards; }
+.animate-modal { animation: modalPop 0.2s ease-out forwards; }
+
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes modalPop { 0% { transform: scale(0.95); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+
+.highlight-word {
+    text-decoration: underline;
+    text-decoration-color: #137fec;
+    text-decoration-style: dotted;
+    text-underline-offset: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.highlight-word:hover {
+    background-color: rgba(19, 127, 236, 0.2);
+    color: #ffffff;
+    border-radius: 4px;
+}
+
+/* Specific overrides for Profile page to enforce yellow theme locally */
+.profile-page .text-primary { color: #f9f506 !important; }
+.profile-page .bg-primary { background-color: #f9f506 !important; }
+.profile-page .border-primary { border-color: #f9f506 !important; }
+.profile-page .focus\:border-primary:focus { border-color: #f9f506 !important; }
+.profile-page .focus\:ring-primary:focus { --tw-ring-color: #f9f506 !important; }
+.profile-page .shadow-primary\/20 { --tw-shadow-color: rgba(249, 245, 6, 0.2) !important; }
