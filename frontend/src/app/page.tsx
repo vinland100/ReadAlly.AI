@@ -11,6 +11,7 @@ export default function LoginScreen() {
     const [isLogin, setIsLogin] = useState(true);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
     const setToken = useAuthStore(state => state.setToken);
 
     const handleLogin = async () => {
@@ -97,9 +98,13 @@ export default function LoginScreen() {
                             <input
                                 value={password} onChange={(e) => setPassword(e.target.value)}
                                 className="w-full rounded-lg border border-[#cfd7e7] bg-[#f8f9fc] text-[#0d121b] h-12 px-4 pr-12 focus:ring-2 focus:ring-[#135bec]/50 focus:border-[#135bec] transition-all outline-none placeholder:text-[#9ca3af]"
-                                placeholder="Enter your password" type="password" />
-                            <button className="absolute right-0 top-0 h-full w-12 flex items-center justify-center text-[#4c669a] hover:text-[#135bec] transition-colors">
-                                <span className="material-symbols-outlined text-[20px]">visibility</span>
+                                placeholder="Enter your password" type={showPassword ? 'text' : 'password'} />
+                            <button
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                                className="absolute right-0 top-0 h-full w-12 flex items-center justify-center text-[#4c669a] hover:text-[#135bec] transition-colors"
+                            >
+                                <span className="material-symbols-outlined text-[20px]">{showPassword ? 'visibility_off' : 'visibility'}</span>
                             </button>
                         </div>
                     </div>

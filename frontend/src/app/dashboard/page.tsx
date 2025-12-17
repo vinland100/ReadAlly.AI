@@ -8,12 +8,10 @@ import { useRouter } from 'next/navigation';
 export default function DashboardScreen() {
     useTheme('light');
     const [articles, setArticles] = useState<any[]>([]);
-    const [stats, setStats] = useState({ wordsRead: 1250, streak: 12 });
+    const [stats, setStats] = useState({ wordsRead: 0, streak: 0 });
+    const [selectedDifficulty, setSelectedDifficulty] = useState<string>('All');
+    const [loading, setLoading] = useState(true);
     const router = useRouter();
-
-    useEffect(() => {
-        fetchArticles();
-    }, []);
 
     const fetchArticles = async () => {
         try {
@@ -24,17 +22,47 @@ export default function DashboardScreen() {
         }
     };
 
+    const fetchStats = async () => {
+        try {
+            const res = await api.get('/users/me/stats');
+            setStats(res.data);
+        } catch (e: any) {
+            if (e.response?.status !== 401) {
+                console.error("Failed to fetch stats");
+            }
+        }
+    };
+
+    useEffect(() => {
+        Promise.all([fetchArticles(), fetchStats()]).finally(() => {
+            setLoading(false);
+        });
+    }, []);
+
     const handleIngest = async () => {
         const url = prompt("Enter URL to ingest:");
-        if(url) {
+        if (url) {
             try {
                 await api.post('/ingest/url', null, { params: { url } });
                 fetchArticles();
-            } catch(e) {
+            } catch (e) {
                 alert("Ingestion failed");
             }
         }
     }
+
+    if (loading) {
+        return (
+            <div className="flex h-screen items-center justify-center">
+                <div className="flex flex-col items-center gap-4">
+                    <div className="w-12 h-12 border-4 border-[#135bec] border-t-transparent rounded-full animate-spin"></div>
+                    <p className="text-slate-500 font-medium">Loading content...</p>
+                </div>
+            </div>
+        )
+    }
+
+    const heroArticle = articles.length > 0 ? articles[0] : null;
 
     return (
         <div className="font-lexend bg-[#f8f9fc] min-h-screen flex flex-col overflow-x-hidden">
@@ -49,7 +77,7 @@ export default function DashboardScreen() {
                     <button onClick={handleIngest} className="text-sm font-bold text-[#135bec] hover:bg-blue-50 px-3 py-1 rounded">
                         + Add Content
                     </button>
-                    <Link href="/profile" className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10 border-2 border-white shadow-sm" style={{backgroundImage: 'url("https://api.dicebear.com/9.x/adventurer/svg?seed=Cookie")'}}></Link>
+                    <Link href="/profile" className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10 border-2 border-white shadow-sm" style={{ backgroundImage: 'url("https://api.dicebear.com/9.x/adventurer/svg?seed=Cookie")' }}></Link>
                 </div>
             </header>
 
@@ -59,17 +87,31 @@ export default function DashboardScreen() {
                         {/* Hero */}
                         <div className="flex-[2] rounded-2xl bg-white shadow-sm border border-slate-200 p-2 overflow-hidden">
                             <div className="flex flex-col items-stretch justify-start h-full md:flex-row md:items-center gap-4">
-                                <div className="w-full md:w-1/2 h-48 md:h-full min-h-[240px] bg-center bg-no-repeat bg-cover rounded-xl" style={{backgroundImage: 'url("https://lh3.googleusercontent.com/aida-public/AB6AXuB1zvUKwe7MB09uWaZdCXRoaBTU1Q0Qo4ys3rsKReewuJP3-DwYtLbusz88GTLjn2aZ1xxffR5kRpLtFsU-g3hOKXWpxvGLkwidp8VVt_iMaFwguTNhEw5MjVKyjeQYhrL3wsf8BJOdBfD6EmbqjicnXGvfewi-jPgibWiTwqiPwehEdjXDwCHbhSFqGs782DQ0YQFEnQNWllR40fA61qQDoauz4n6hqi720T4OXh5oWjVyjKYmwK85elxtfKJeWT_xQ8bjiFU0M9l6")'}}></div>
+                                <div className="w-full md:w-1/2 h-48 md:h-full min-h-[240px] bg-center bg-no-repeat bg-cover rounded-xl" style={{ backgroundImage: 'url("https://lh3.googleusercontent.com/aida-public/AB6AXuB1zvUKwe7MB09uWaZdCXRoaBTU1Q0Qo4ys3rsKReewuJP3-DwYtLbusz88GTLjn2aZ1xxffR5kRpLtFsU-g3hOKXWpxvGLkwidp8VVt_iMaFwguTNhEw5MjVKyjeQYhrL3wsf8BJOdBfD6EmbqjicnXGvfewi-jPgibWiTwqiPwehEdjXDwCHbhSFqGs782DQ0YQFEnQNWllR40fA61qQDoauz4n6hqi720T4OXh5oWjVyjKYmwK85elxtfKJeWT_xQ8bjiFU0M9l6")' }}></div>
                                 <div className="flex flex-col justify-center gap-3 p-4">
                                     <div className="inline-flex items-center gap-2">
                                         <span className="bg-[#135bec]/10 text-[#135bec] text-xs font-bold px-2 py-1 rounded uppercase tracking-wider">Daily Pick</span>
-                                        <span className="text-slate-400 text-xs font-medium">8 min read</span>
+                                        <span className="text-slate-400 text-xs font-medium">{heroArticle ? Math.ceil(heroArticle.word_count / 200) : 5} min read</span>
                                     </div>
-                                    <h1 className="text-slate-900 text-2xl font-bold leading-tight">The Future of Neural Networks</h1>
-                                    <p className="text-slate-500 text-base font-normal leading-relaxed line-clamp-3">An immersive deep dive into AI cognition and how language models are reshaping our understanding of intelligence.</p>
+                                    <h1 className="text-slate-900 text-2xl font-bold leading-tight">{heroArticle ? heroArticle.title : 'No articles available'}</h1>
+                                    <p className="text-slate-500 text-base font-normal leading-relaxed line-clamp-3">
+                                        {heroArticle ? 'Start your daily reading habit with this featured article.' : 'Check back later for more content.'}
+                                    </p>
+
                                     <div className="flex items-center justify-between pt-2 mt-auto">
-                                        <span className="text-slate-500 text-sm font-medium">Difficulty: <span className="text-slate-900 font-semibold">IELTS</span></span>
-                                        <button className="flex cursor-pointer items-center justify-center rounded-lg h-10 px-6 bg-[#135bec] hover:bg-blue-700 transition-colors text-white text-sm font-bold shadow-lg shadow-blue-500/20">Start Reading</button>
+                                        <span className="text-slate-500 text-sm font-medium">Difficulty: <span className="text-slate-900 font-semibold">{heroArticle ? heroArticle.difficulty : 'N/A'}</span></span>
+                                        <button
+                                            onClick={() => {
+                                                if (articles.length > 0) {
+                                                    router.push(`/read/${articles[0].id}`);
+                                                } else {
+                                                    alert("No articles available to read.");
+                                                }
+                                            }}
+                                            className="flex cursor-pointer items-center justify-center rounded-lg h-10 px-6 bg-[#135bec] hover:bg-blue-700 transition-colors text-white text-sm font-bold shadow-lg shadow-blue-500/20"
+                                        >
+                                            Start Reading
+                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -79,7 +121,7 @@ export default function DashboardScreen() {
                             <div className="flex-1 flex flex-col justify-between gap-2 rounded-2xl p-6 bg-white border border-slate-200 shadow-sm">
                                 <div className="flex justify-between items-start">
                                     <div className="p-2 bg-green-100 rounded-lg text-green-600"><span className="material-symbols-outlined">menu_book</span></div>
-                                    <span className="text-xs font-bold text-green-600 flex items-center gap-1">+12% <span className="material-symbols-outlined text-[14px]">arrow_upward</span></span>
+
                                 </div>
                                 <div>
                                     <p className="text-slate-500 text-sm font-medium">Words Read Today</p>
@@ -102,17 +144,44 @@ export default function DashboardScreen() {
                     <div className="flex flex-col gap-6">
                         <div className="border-b border-slate-200">
                             <nav className="flex gap-8 overflow-x-auto pb-px">
-                                <button className="border-b-[3px] border-[#135bec] text-slate-900 pb-3 pt-2 px-1 text-sm font-bold whitespace-nowrap">All</button>
-                                <button className="border-b-[3px] border-transparent text-slate-500 hover:text-slate-700 pb-3 pt-2 px-1 text-sm font-bold whitespace-nowrap">High School</button>
-                                <button className="border-b-[3px] border-transparent text-slate-500 hover:text-slate-700 pb-3 pt-2 px-1 text-sm font-bold whitespace-nowrap">CET-4/6</button>
+                                <button
+                                    onClick={() => setSelectedDifficulty('All')}
+                                    className={`border-b-[3px] ${selectedDifficulty === 'All' ? 'border-[#135bec] text-slate-900' : 'border-transparent text-slate-500 hover:text-slate-700'} pb-3 pt-2 px-1 text-sm font-bold whitespace-nowrap transition-colors`}
+                                >
+                                    All
+                                </button>
+                                <button
+                                    onClick={() => setSelectedDifficulty('Initial')}
+                                    className={`border-b-[3px] ${selectedDifficulty === 'Initial' ? 'border-[#135bec] text-slate-900' : 'border-transparent text-slate-500 hover:text-slate-700'} pb-3 pt-2 px-1 text-sm font-bold whitespace-nowrap transition-colors`}
+                                >
+                                    Initial
+                                </button>
+                                <button
+                                    onClick={() => setSelectedDifficulty('Intermediate')}
+                                    className={`border-b-[3px] ${selectedDifficulty === 'Intermediate' ? 'border-[#135bec] text-slate-900' : 'border-transparent text-slate-500 hover:text-slate-700'} pb-3 pt-2 px-1 text-sm font-bold whitespace-nowrap transition-colors`}
+                                >
+                                    Intermediate
+                                </button>
+                                <button
+                                    onClick={() => setSelectedDifficulty('Upper Intermediate')}
+                                    className={`border-b-[3px] ${selectedDifficulty === 'Upper Intermediate' ? 'border-[#135bec] text-slate-900' : 'border-transparent text-slate-500 hover:text-slate-700'} pb-3 pt-2 px-1 text-sm font-bold whitespace-nowrap transition-colors`}
+                                >
+                                    Upper Intermediate
+                                </button>
+                                <button
+                                    onClick={() => setSelectedDifficulty('Advanced')}
+                                    className={`border-b-[3px] ${selectedDifficulty === 'Advanced' ? 'border-[#135bec] text-slate-900' : 'border-transparent text-slate-500 hover:text-slate-700'} pb-3 pt-2 px-1 text-sm font-bold whitespace-nowrap transition-colors`}
+                                >
+                                    Advanced
+                                </button>
                             </nav>
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                            {articles.map((article: any) => (
+                            {articles.filter(a => selectedDifficulty === 'All' || a.difficulty === selectedDifficulty).map((article: any) => (
                                 <Link key={article.id} href={`/read/${article.id}`} className="group flex flex-col gap-3 pb-3 cursor-pointer">
                                     <div className="overflow-hidden rounded-xl">
                                         <div className="w-full bg-center bg-no-repeat aspect-video bg-cover transform group-hover:scale-105 transition-transform duration-500"
-                                             style={{backgroundImage: `url("${article.cover_image || 'https://lh3.googleusercontent.com/aida-public/AB6AXuC6mlqqbMrHd77Fs6j6htrKVncuuohfQ55o9uAsualwxBNs0A6LmTQ8ytSwCHZnKrcLmxhSNaieSgliAdYwtM-SN6gsYz4tAf8SQwVs774oX8jb5tkhrPJ_PToFR3DtvonmL7OP8AvGEyt9O9fz4N7nhgRjILeSyZP7U9OGs3cUEu7NEU9nbLNtwzwYP8vhteoM2hDH1SYcAWLXDERBK7OFdCymFFMftrM7zXMdElxPOpRFdwAFTVKPUDXowe8_aj-IRM-ZNxZwWyHk'}")`}}></div>
+                                            style={{ backgroundImage: `url("${article.cover_image || 'https://lh3.googleusercontent.com/aida-public/AB6AXuC6mlqqbMrHd77Fs6j6htrKVncuuohfQ55o9uAsualwxBNs0A6LmTQ8ytSwCHZnKrcLmxhSNaieSgliAdYwtM-SN6gsYz4tAf8SQwVs774oX8jb5tkhrPJ_PToFR3DtvonmL7OP8AvGEyt9O9fz4N7nhgRjILeSyZP7U9OGs3cUEu7NEU9nbLNtwzwYP8vhteoM2hDH1SYcAWLXDERBK7OFdCymFFMftrM7zXMdElxPOpRFdwAFTVKPUDXowe8_aj-IRM-ZNxZwWyHk'}")` }}></div>
                                     </div>
                                     <div className="flex flex-col gap-1">
                                         <div className="flex items-center justify-between">

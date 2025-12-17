@@ -4,11 +4,10 @@ from sqlmodel import Field, SQLModel, Relationship
 from enum import Enum
 
 class DifficultyLevel(str, Enum):
-    HIGH_SCHOOL = "High School"
-    CET_4 = "CET-4"
-    CET_6 = "CET-6"
-    IELTS = "IELTS"
-    TEM_8 = "TEM-8"
+    INITIAL = "Initial" # 初阶 (高考)
+    INTERMEDIATE = "Intermediate" # 中阶 (四级)
+    UPPER_INTERMEDIATE = "Upper Intermediate" # 中高阶 (六级/考研)
+    ADVANCED = "Advanced" # 高阶 (雅思/托福/专四)
     UNKNOWN = "Unknown"
 
 class User(SQLModel, table=True):
@@ -17,6 +16,11 @@ class User(SQLModel, table=True):
     hashed_password: str
     nickname: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
+    
+    # Stats
+    words_read_today: int = Field(default=0)
+    current_streak: int = Field(default=0)
+    last_read_date: Optional[datetime] = None
 
 class Article(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)

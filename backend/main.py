@@ -12,7 +12,13 @@ import reading_service
 import uvicorn
 import os
 
+from apscheduler.schedulers.background import BackgroundScheduler
+from crawler.shanbay import fetch_shanbay_articles
+import asyncio
+
 app = FastAPI(title="ReadAlly.AI Backend")
+
+scheduler = BackgroundScheduler()
 
 app.include_router(ingest_service.router, tags=["Ingestion"])
 app.include_router(reading_service.router, prefix="/api", tags=["Reading"])
@@ -44,6 +50,17 @@ class Token(BaseModel):
 @app.on_event("startup")
 def on_startup():
     create_db_and_tables()
+    
+    # Schedule Shanbay crawler at 1:00 AM daily
+    scheduler.add_job(fetch_shanbay_articles, 'cron', hour=1, minute=0)
+    scheduler.start()
+    print("Scheduler started. Shanbay crawler set for 1:00 AM.")
+
+@app.post("/admin/crawl_shanbay")
+def trigger_crawl():
+    """Manually trigger the crawler for testing."""
+    fetch_shanbay_articles()
+    return {"message": "Crawl triggered"}
 
 @app.post("/register", response_model=Token)
 def register(user_in: UserCreate, session: Session = Depends(get_session)):
@@ -75,6 +92,15 @@ def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), ses
 @app.get("/users/me", response_model=User)
 def read_users_me(current_user: User = Depends(get_current_user)):
     return current_user
+
+@app.get("/users/me/stats")
+def get_user_stats(current_user: User = Depends(get_current_user)):
+    # In a real app, we might reset words_read_today if the date has changed
+    # For now, just return what's in the DB
+    return {
+        "wordsRead": current_user.words_read_today,
+        "streak": current_user.current_streak
+    }
 
 class PasswordChange(BaseModel):
     old_password: str

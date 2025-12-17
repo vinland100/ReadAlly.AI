@@ -11,8 +11,7 @@ router = APIRouter()
 @router.get("/articles", response_model=List[Article])
 def get_articles(
     difficulty: Optional[DifficultyLevel] = None,
-    session: Session = Depends(get_session),
-    current_user = Depends(get_current_user)
+    session: Session = Depends(get_session)
 ):
     query = select(Article)
     if difficulty:
@@ -24,8 +23,7 @@ def get_articles(
 def get_article_page(
     article_id: int,
     page_num: int,
-    session: Session = Depends(get_session),
-    current_user = Depends(get_current_user)
+    session: Session = Depends(get_session)
 ):
     # Pagination: 20 paragraphs per page
     limit = 20
@@ -115,15 +113,15 @@ def get_article_page(
     }
 
 @router.post("/analyze/translation")
-def analyze_translation(paragraph_text: str, current_user = Depends(get_current_user)):
+def analyze_translation(paragraph_text: str):
     return {"translation": AIService.translate_paragraph(paragraph_text)}
 
 @router.post("/analyze/syntax")
-def analyze_syntax(paragraph_text: str, current_user = Depends(get_current_user)):
+def analyze_syntax(paragraph_text: str):
     return {"syntax": AIService.analyze_syntax(paragraph_text)}
 
 @router.get("/tts/paragraph")
-def get_paragraph_tts(text: str, current_user = Depends(get_current_user)):
+def get_paragraph_tts(text: str):
     audio_data = AIService.generate_tts(text)
     if not audio_data:
         raise HTTPException(status_code=500, detail="TTS generation failed")
