@@ -76,5 +76,19 @@ def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), ses
 def read_users_me(current_user: User = Depends(get_current_user)):
     return current_user
 
+class PasswordChange(BaseModel):
+    old_password: str
+    new_password: str
+
+@app.post("/users/me/password")
+def change_password(password_data: PasswordChange, current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
+    if not verify_password(password_data.old_password, current_user.hashed_password):
+        raise HTTPException(status_code=400, detail="Incorrect old password")
+    
+    current_user.hashed_password = get_password_hash(password_data.new_password)
+    session.add(current_user)
+    session.commit()
+    return {"message": "Password updated successfully"}
+
 if __name__ == "__main__":
     uvicorn.run("backend.main:app", host="0.0.0.0", port=8000, reload=True)

@@ -8,6 +8,7 @@ import { useAuthStore } from '@/lib/store';
 export default function LoginScreen() {
     useTheme('light');
     const router = useRouter();
+    const [isLogin, setIsLogin] = useState(true);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const setToken = useAuthStore(state => state.setToken);
@@ -26,13 +27,20 @@ export default function LoginScreen() {
         }
     };
 
-    // Quick Register for demo
     const handleRegister = async () => {
         try {
-             await api.post('/register', { email, password, nickname: 'New User' });
-             await handleLogin();
+            await api.post('/register', { email, password, nickname: 'New User' });
+            await handleLogin();
         } catch (e) {
             alert("Register failed");
+        }
+    }
+
+    const handleSubmit = () => {
+        if (isLogin) {
+            handleLogin();
+        } else {
+            handleRegister();
         }
     }
 
@@ -57,8 +65,18 @@ export default function LoginScreen() {
 
                 <div className="px-8 mt-6">
                     <div className="flex border-b border-[#cfd7e7]">
-                        <button className="flex-1 pb-3 text-sm font-bold text-[#135bec] border-b-2 border-[#135bec] transition-all">Sign In</button>
-                        <button className="flex-1 pb-3 text-sm font-bold text-[#4c669a] border-b-2 border-transparent hover:text-[#0d121b] transition-all">Sign Up</button>
+                        <button
+                            onClick={() => setIsLogin(true)}
+                            className={`flex-1 pb-3 text-sm font-bold border-b-2 transition-all ${isLogin ? 'text-[#135bec] border-[#135bec]' : 'text-[#4c669a] border-transparent hover:text-[#0d121b]'}`}
+                        >
+                            Sign In
+                        </button>
+                        <button
+                            onClick={() => setIsLogin(false)}
+                            className={`flex-1 pb-3 text-sm font-bold border-b-2 transition-all ${!isLogin ? 'text-[#135bec] border-[#135bec]' : 'text-[#4c669a] border-transparent hover:text-[#0d121b]'}`}
+                        >
+                            Sign Up
+                        </button>
                     </div>
                 </div>
 
@@ -68,29 +86,26 @@ export default function LoginScreen() {
                         <input
                             value={email} onChange={(e) => setEmail(e.target.value)}
                             className="w-full rounded-lg border border-[#cfd7e7] bg-[#f8f9fc] text-[#0d121b] h-12 px-4 focus:ring-2 focus:ring-[#135bec]/50 focus:border-[#135bec] transition-all outline-none placeholder:text-[#9ca3af]"
-                            placeholder="name@example.com" type="email"/>
+                            placeholder="name@example.com" type="email" />
                     </div>
                     <div className="flex flex-col gap-2">
                         <div className="flex justify-between items-center">
                             <label className="text-[#0d121b] text-sm font-medium">Password</label>
-                            <a href="#" className="text-[#135bec] text-xs font-semibold hover:underline">Forgot Password?</a>
+                            {isLogin && <a href="#" className="text-[#135bec] text-xs font-semibold hover:underline">Forgot Password?</a>}
                         </div>
                         <div className="relative w-full">
                             <input
                                 value={password} onChange={(e) => setPassword(e.target.value)}
                                 className="w-full rounded-lg border border-[#cfd7e7] bg-[#f8f9fc] text-[#0d121b] h-12 px-4 pr-12 focus:ring-2 focus:ring-[#135bec]/50 focus:border-[#135bec] transition-all outline-none placeholder:text-[#9ca3af]"
-                                placeholder="Enter your password" type="password"/>
+                                placeholder="Enter your password" type="password" />
                             <button className="absolute right-0 top-0 h-full w-12 flex items-center justify-center text-[#4c669a] hover:text-[#135bec] transition-colors">
                                 <span className="material-symbols-outlined text-[20px]">visibility</span>
                             </button>
                         </div>
                     </div>
-                    <button onClick={handleLogin} className="w-full h-12 bg-[#135bec] hover:bg-blue-700 text-white font-bold rounded-lg shadow-md hover:shadow-lg transition-all transform active:scale-[0.99] flex items-center justify-center gap-2 mt-2">
-                        <span>Sign In</span>
-                        <span className="material-symbols-outlined text-[18px]">login</span>
-                    </button>
-                    <button onClick={handleRegister} className="w-full h-10 border border-[#135bec] text-[#135bec] font-bold rounded-lg hover:bg-blue-50 transition-all flex items-center justify-center gap-2">
-                        <span>Register (Dev)</span>
+                    <button onClick={handleSubmit} className="w-full h-12 bg-[#135bec] hover:bg-blue-700 text-white font-bold rounded-lg shadow-md hover:shadow-lg transition-all transform active:scale-[0.99] flex items-center justify-center gap-2 mt-2">
+                        <span>{isLogin ? 'Sign In' : 'Sign Up'}</span>
+                        <span className="material-symbols-outlined text-[18px]">{isLogin ? 'login' : 'person_add'}</span>
                     </button>
 
                     <div className="relative flex py-2 items-center">
