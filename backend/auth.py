@@ -27,7 +27,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=15)
+        expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
@@ -42,10 +42,14 @@ async def get_current_user(token: str = Depends(oauth2_scheme), session: Session
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         email: str = payload.get("sub")
         if email is None:
+            print(f"Auth failure: No sub in payload: {payload}")
             raise credentials_exception
-    except JWTError:
+    except JWTError as e:
+        print(f"Auth failure: JWT Error: {e}")
         raise credentials_exception
+
     user = session.query(User).filter(User.email == email).first()
     if user is None:
+        print(f"Auth failure: User not found for email: {email}")
         raise credentials_exception
     return user

@@ -16,12 +16,12 @@ def get_articles(
     query = select(Article)
     if difficulty:
         query = query.where(Article.difficulty == difficulty)
-    query = query.order_by(Article.created_at.desc())
+    query = query.order_by(Article.published_at.desc())
     return session.exec(query).all()
 
 @router.get("/articles/{article_id}/page/{page_num}")
 def get_article_page(
-    article_id: int,
+    article_id: str,
     page_num: int,
     session: Session = Depends(get_session)
 ):
@@ -29,13 +29,21 @@ def get_article_page(
     limit = 20
     offset = (page_num - 1) * limit
 
-    article = session.get(Article, article_id)
+    # Try to fetch by ID first
+    article = None
+    try:
+        aid = int(article_id)
+        article = session.get(Article, aid)
+    except ValueError:
+        # It's a string, try to find by slug
+        article = session.exec(select(Article).where(Article.source_url.contains(article_id))).first()
+
     if not article:
         raise HTTPException(status_code=404, detail="Article not found")
 
     paragraphs = session.exec(
         select(Paragraph)
-        .where(Paragraph.article_id == article_id)
+        .where(Paragraph.article_id == article.id)
         .order_by(Paragraph.order_index)
         .offset(offset)
         .limit(limit)
@@ -98,6 +106,7 @@ def get_article_page(
         result_paragraphs.append({
             "id": p.id,
             "content": p.content,
+            "image_url": p.image_url,
             "order_index": p.order_index,
             "annotations": p_annotations
         })
@@ -113,15 +122,49 @@ def get_article_page(
     }
 
 @router.post("/analyze/translation")
-def analyze_translation(paragraph_text: str):
+def analyze_translation(
+    paragraph_text: str,
+    session: Session = Depends(get_session)
+):
+    p = session.exec(select(Paragraph).where(Paragraph.content == paragraph_text)).first()
+    
+    if p and p.translation:
+        return {"translation": json.loads(p.translation)}
+    
+    # Fallback to on-demand if missing (should not happen in eager mode)
     return {"translation": AIService.translate_paragraph(paragraph_text)}
 
 @router.post("/analyze/syntax")
-def analyze_syntax(paragraph_text: str):
+def analyze_syntax(
+    paragraph_text: str,
+    session: Session = Depends(get_session)
+):
+    p = session.exec(select(Paragraph).where(Paragraph.content == paragraph_text)).first()
+    
+    if p and p.syntax:
+        return {"syntax": json.loads(p.syntax)}
+        
     return {"syntax": AIService.analyze_syntax(paragraph_text)}
 
+import json
+import os
+
 @router.get("/tts/paragraph")
-def get_paragraph_tts(text: str):
+def get_paragraph_tts(
+    text: str,
+    session: Session = Depends(get_session)
+):
+    p = session.exec(select(Paragraph).where(Paragraph.content == text)).first()
+    
+    if p and p.audio_path:
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        abs_path = os.path.join(base_dir, p.audio_path)
+        
+        if os.path.exists(abs_path):
+            with open(abs_path, "rb") as f:
+                return Response(content=f.read(), media_type="audio/mpeg")
+    
+    # Fallback
     audio_data = AIService.generate_tts(text)
     if not audio_data:
         raise HTTPException(status_code=500, detail="TTS generation failed")

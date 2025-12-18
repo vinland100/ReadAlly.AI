@@ -14,22 +14,35 @@ interface Annotation {
 interface ParagraphProps {
     id: number;
     content: string;
+    image_url?: string | null;
     annotations: Annotation[];
     isActiveForTTS: boolean;
-    onPlayTTS: (text: string) => void; // Paragraph-level TTS
+    onPlayTTS: (text: string) => void;
 }
 
-export default function ParagraphBlock({ id, content, annotations, isActiveForTTS, onPlayTTS }: ParagraphProps) {
-    const [translation, setTranslation] = useState<string | null>(null);
-    const [syntax, setSyntax] = useState<string | null>(null);
+interface TranslationResult {
+    translation: string;
+    style: string;
+    key_phrases: { en: string; cn: string; }[];
+}
+
+interface SyntaxResult {
+    structures: { pattern: string; content: string; explanation: string; }[];
+    clauses: { type: string; content: string; explanation: string; }[];
+    grammar_points: { point: string; point_cn?: string; explanation: string; }[];
+}
+
+export default function ParagraphBlock({ id, content, image_url, annotations, isActiveForTTS, onPlayTTS }: ParagraphProps) {
+    const [translation, setTranslation] = useState<TranslationResult | null>(null);
+    const [syntax, setSyntax] = useState<SyntaxResult | null>(null);
     const [loadingAction, setLoadingAction] = useState<string | null>(null);
     const [activePanel, setActivePanel] = useState<'translation' | 'syntax' | null>(null);
     const [selectedWord, setSelectedWord] = useState<Annotation | null>(null);
 
     const handleTranslate = async () => {
         if (activePanel === 'translation') {
-             setActivePanel(null);
-             return;
+            setActivePanel(null);
+            return;
         }
         if (translation) {
             setActivePanel('translation');
@@ -49,8 +62,8 @@ export default function ParagraphBlock({ id, content, annotations, isActiveForTT
 
     const handleSyntax = async () => {
         if (activePanel === 'syntax') {
-             setActivePanel(null);
-             return;
+            setActivePanel(null);
+            return;
         }
         if (syntax) {
             setActivePanel('syntax');
@@ -109,13 +122,13 @@ export default function ParagraphBlock({ id, content, annotations, isActiveForTT
     };
 
     return (
-        <div className={clsx("paragraph-container relative group transition-all duration-300 p-2 rounded-xl", isActiveForTTS ? "bg-blue-50/10 ring-2 ring-[#137fec]" : "")}>
+        <div className={clsx("paragraph-container relative group/para transition-all duration-300 p-2 rounded-xl", isActiveForTTS ? "bg-blue-50/10 ring-2 ring-[#137fec]" : "")}>
 
-            {/* Right Side Buttons (Popover) */}
-            <div className="absolute -right-12 top-1 z-20 opacity-100">
+            {/* Right Side Buttons (Popover) - Redesigned to be subtle */}
+            <div className="absolute -right-12 top-0 bottom-0 flex items-start pt-1 z-20 opacity-0 group-hover/para:opacity-100 transition-opacity duration-200">
                 <Popover className="relative">
-                    <Popover.Button className="p-1.5 rounded-full text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 shadow-sm ring-2 ring-[#137fec]/20 outline-none hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
-                        <span className="material-symbols-outlined text-[20px]">more_vert</span>
+                    <Popover.Button className="p-1.5 rounded-md text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all outline-none">
+                        <span className="material-symbols-outlined text-[18px]">more_horiz</span>
                     </Popover.Button>
                     <Transition
                         as={Fragment}
@@ -126,19 +139,19 @@ export default function ParagraphBlock({ id, content, annotations, isActiveForTT
                         leaveFrom="opacity-100 translate-y-0"
                         leaveTo="opacity-0 translate-y-1"
                     >
-                        <Popover.Panel className="absolute right-0 mt-2 w-56 origin-top-right rounded-xl bg-white dark:bg-[#1e293b] shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden z-30">
-                            <div className="p-1 flex flex-col gap-1">
-                                <button onClick={handleTranslate} className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/50 rounded-lg transition-colors text-left">
-                                    <span className="material-symbols-outlined text-[20px] text-blue-500">translate</span>
-                                    <span>Translate Paragraph</span>
+                        <Popover.Panel className="absolute right-0 mt-1 w-48 origin-top-right rounded-lg bg-white dark:bg-[#1e293b] shadow-xl border border-slate-100 dark:border-slate-700/50 overflow-hidden z-30 ring-1 ring-black/5">
+                            <div className="p-1 flex flex-col gap-0.5">
+                                <button onClick={handleTranslate} className="w-full flex items-center gap-2.5 px-2 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50 rounded-md transition-colors text-left group/btn">
+                                    <span className="material-symbols-outlined text-[18px] text-slate-400 group-hover/btn:text-blue-500 transition-colors">translate</span>
+                                    <span>Translate</span>
                                 </button>
-                                <button onClick={handleSyntax} className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/50 rounded-lg transition-colors text-left">
-                                    <span className="material-symbols-outlined text-[20px] text-emerald-500">school</span>
-                                    <span>Syntax Analysis</span>
+                                <button onClick={handleSyntax} className="w-full flex items-center gap-2.5 px-2 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50 rounded-md transition-colors text-left group/btn">
+                                    <span className="material-symbols-outlined text-[18px] text-slate-400 group-hover/btn:text-emerald-500 transition-colors">school</span>
+                                    <span>Syntax</span>
                                 </button>
-                                <button onClick={() => onPlayTTS(content)} className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/50 rounded-lg transition-colors text-left">
-                                    <span className="material-symbols-outlined text-[20px] text-purple-500">volume_up</span>
-                                    <span>Read Paragraph</span>
+                                <button onClick={() => onPlayTTS(content)} className="w-full flex items-center gap-2.5 px-2 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50 rounded-md transition-colors text-left group/btn">
+                                    <span className="material-symbols-outlined text-[18px] text-slate-400 group-hover/btn:text-purple-500 transition-colors">volume_up</span>
+                                    <span>Read</span>
                                 </button>
                             </div>
                         </Popover.Panel>
@@ -146,30 +159,122 @@ export default function ParagraphBlock({ id, content, annotations, isActiveForTT
                 </Popover>
             </div>
 
-            {/* Paragraph Text */}
-            {renderContent()}
+            {/* Paragraph Content OR Image */}
+            {image_url ? (
+                <div className="my-6 rounded-lg overflow-hidden shadow-sm border border-slate-100 dark:border-slate-700/50">
+                    <img
+                        src={image_url}
+                        alt="Article Image"
+                        className="w-full h-auto object-cover max-h-[500px]"
+                        loading="lazy"
+                    />
+                </div>
+            ) : (
+                renderContent()
+            )}
 
             {/* Inline Action Panels */}
             {activePanel === 'translation' && (
-                <div className="mt-4 bg-slate-50 dark:bg-[#18232e] rounded-xl border border-slate-200 dark:border-slate-700/60 overflow-hidden shadow-inner animate-fade-in">
-                    <div className="flex items-center gap-2 px-4 py-2 bg-blue-50/50 dark:bg-blue-900/10 border-b border-blue-100 dark:border-blue-900/20">
-                        <span className="material-symbols-outlined text-[16px] text-[#137fec]">auto_awesome</span>
-                        <span className="text-xs font-bold text-[#137fec] uppercase tracking-wider">AI Translation</span>
+                <div className="mt-4 bg-slate-50 rounded-xl border border-slate-200 overflow-hidden shadow-sm animate-fade-in font-lexend">
+                    <div className="flex items-center justify-between px-4 py-3 bg-white border-b border-slate-100">
+                        <div className="flex items-center gap-2">
+                            <div className="size-6 rounded bg-blue-50 flex items-center justify-center">
+                                <span className="material-symbols-outlined text-[16px] text-[#137fec]">translate</span>
+                            </div>
+                            <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">Smart Translation</span>
+                        </div>
+                        {translation?.style && (
+                            <span className="text-[10px] bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full font-medium">{translation.style}</span>
+                        )}
                     </div>
-                    <div className="p-4">
-                        <p className="text-slate-600 dark:text-slate-300 text-base leading-relaxed italic">{translation || "Loading translation..."}</p>
+                    <div className="p-5 space-y-6">
+                        <p className="text-slate-900 text-lg leading-relaxed font-medium">
+                            {translation?.translation || "Loading..."}
+                        </p>
+
+                        {translation?.key_phrases && translation.key_phrases.length > 0 && (
+                            <div className="pt-4 border-t border-slate-100">
+                                <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-3">Key Phrases</h4>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    {translation.key_phrases.map((phrase, i) => (
+                                        <div key={i} className="flex flex-col p-2.5 rounded-lg bg-white border border-slate-100 shadow-sm">
+                                            <span className="text-sm font-bold text-slate-900">{phrase.en}</span>
+                                            <span className="text-xs text-slate-500 mt-0.5">{phrase.cn}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
 
             {activePanel === 'syntax' && (
-                <div className="mt-4 bg-slate-50 dark:bg-[#18232e] rounded-xl border border-slate-200 dark:border-slate-700/60 overflow-hidden shadow-inner animate-fade-in">
-                    <div className="flex items-center gap-2 px-4 py-2 bg-emerald-50/50 dark:bg-emerald-900/10 border-b border-emerald-100 dark:border-emerald-900/20">
-                        <span className="material-symbols-outlined text-[16px] text-emerald-600 dark:text-emerald-400">psychology</span>
-                        <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Grammar Insight</span>
+                <div className="mt-4 bg-[#fcfcfd] rounded-xl border border-slate-200 shadow-sm animate-fade-in font-lexend">
+                    <div className="flex items-center gap-2 px-4 py-3 bg-white border-b border-slate-100 rounded-t-xl">
+                        <div className="size-6 rounded bg-emerald-50 flex items-center justify-center">
+                            <span className="material-symbols-outlined text-[16px] text-emerald-600">psychology</span>
+                        </div>
+                        <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">Grammar Insight (句法语法分析)</span>
                     </div>
-                    <div className="p-4">
-                        <p className="text-slate-600 dark:text-slate-300 text-base leading-relaxed whitespace-pre-wrap">{syntax || "Loading analysis..."}</p>
+                    <div className="p-5 space-y-8">
+                        {syntax?.structures && syntax.structures.length > 0 && (
+                            <div>
+                                <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-4">Sentence Patterns (句型结构)</h4>
+                                <div className="space-y-4">
+                                    {syntax.structures.map((s, i) => (
+                                        <div key={i} className="relative pl-4 border-l-2 border-emerald-500/30">
+                                            <div className="flex flex-col mb-1">
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded uppercase">{s.pattern}</span>
+                                                    <span className="text-sm text-slate-900 font-bold">{s.content}</span>
+                                                </div>
+                                            </div>
+                                            <p className="text-xs text-slate-500 leading-relaxed font-medium">{s.explanation}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {syntax?.clauses && syntax.clauses.length > 0 && (
+                            <div>
+                                <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-4">Clause Analysis (从句分析)</h4>
+                                <div className="grid grid-cols-1 gap-3">
+                                    {syntax.clauses.map((c, i) => (
+                                        <div key={i} className="p-3 rounded-xl bg-white border border-slate-100 shadow-sm transition-all hover:shadow-md">
+                                            <div className="flex items-center gap-2 mb-1.5">
+                                                <span className="size-1.5 rounded-full bg-blue-500"></span>
+                                                <span className="text-xs font-bold text-slate-700">{c.type}</span>
+                                            </div>
+                                            <p className="text-sm text-slate-900 mb-1 font-bold">{c.content}</p>
+                                            <p className="text-xs text-slate-500 font-medium">{c.explanation}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {syntax?.grammar_points && syntax.grammar_points.length > 0 && (
+                            <div>
+                                <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-4">Grammar Points (语法要点)</h4>
+                                <div className="flex flex-wrap gap-3">
+                                    {syntax.grammar_points.map((g, i) => (
+                                        <div key={i} className="group/grammar relative hover:z-50">
+                                            <div className="px-3 py-2 rounded-lg bg-orange-50 border border-orange-100 text-orange-700 text-xs font-bold hover:bg-orange-100 transition-all cursor-default flex flex-col items-center min-w-[100px] text-center">
+                                                <span>{g.point}</span>
+                                                {g.point_cn && <span className="text-[10px] opacity-80 mt-0.5 font-medium">{g.point_cn}</span>}
+                                            </div>
+                                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 w-56 p-3 bg-slate-900/95 backdrop-blur-md text-white text-[11px] rounded-xl shadow-2xl opacity-0 group-hover/grammar:opacity-100 transition-all duration-200 pointer-events-none z-[100] border border-white/10 ring-1 ring-black/20 translate-y-2 group-hover/grammar:translate-y-0 text-left">
+                                                <p className="leading-relaxed font-medium">{g.explanation}</p>
+                                                <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-slate-900/95"></div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                        {!syntax && <div className="text-slate-500 text-sm">Loading grammar analysis...</div>}
                     </div>
                 </div>
             )}
@@ -203,8 +308,8 @@ export default function ParagraphBlock({ id, content, annotations, isActiveForTT
                                 <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white dark:bg-[#1e293b] p-6 text-left align-middle shadow-xl transition-all border border-slate-200 dark:border-slate-700">
                                     <Dialog.Title as="div" className="flex justify-between items-start">
                                         <div className="flex flex-col">
-                                             <h3 className="text-2xl font-bold text-slate-900 dark:text-white">{selectedWord?.word}</h3>
-                                             <span className="text-sm font-mono text-[#137fec] mt-1">{selectedWord?.type}</span>
+                                            <h3 className="text-2xl font-bold text-slate-900 dark:text-white">{selectedWord?.word}</h3>
+                                            <span className="text-sm font-mono text-[#137fec] mt-1">{selectedWord?.type}</span>
                                         </div>
                                         <button onClick={() => setSelectedWord(null)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
                                             <span className="material-symbols-outlined">close</span>
@@ -212,9 +317,9 @@ export default function ParagraphBlock({ id, content, annotations, isActiveForTT
                                     </Dialog.Title>
                                     <div className="mt-4 space-y-4">
                                         <div className="flex gap-3 text-left">
-                                             <div className="shrink-0 mt-0.5">
-                                                 <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs font-bold uppercase tracking-wider">Def</span>
-                                             </div>
+                                            <div className="shrink-0 mt-0.5">
+                                                <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs font-bold uppercase tracking-wider">Def</span>
+                                            </div>
                                             <p className="text-slate-700 dark:text-slate-300 text-sm leading-relaxed">{selectedWord?.definition}</p>
                                         </div>
                                         {selectedWord?.context_example && (

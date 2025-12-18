@@ -4,6 +4,7 @@ import Link from 'next/link';
 import useTheme from '@/lib/useTheme';
 import api from '@/lib/api';
 import { useRouter } from 'next/navigation';
+import { useAuthStore } from '@/lib/store';
 
 export default function DashboardScreen() {
     useTheme('light');
@@ -11,7 +12,10 @@ export default function DashboardScreen() {
     const [stats, setStats] = useState({ wordsRead: 0, streak: 0 });
     const [selectedDifficulty, setSelectedDifficulty] = useState<string>('All');
     const [loading, setLoading] = useState(true);
+    const [currentPage, setCurrentPage] = useState(1);
     const router = useRouter();
+
+    const ITEMS_PER_PAGE = 20;
 
     const fetchArticles = async () => {
         try {
@@ -34,7 +38,7 @@ export default function DashboardScreen() {
     };
 
     useEffect(() => {
-        Promise.all([fetchArticles(), fetchStats()]).finally(() => {
+        Promise.all([useAuthStore.getState().fetchUser(), fetchArticles(), fetchStats()]).finally(() => {
             setLoading(false);
         });
     }, []);
@@ -64,20 +68,31 @@ export default function DashboardScreen() {
 
     const heroArticle = articles.length > 0 ? articles[0] : null;
 
+    const filteredArticles = articles.filter(a => selectedDifficulty === 'All' || a.difficulty === selectedDifficulty);
+    const totalPages = Math.ceil(filteredArticles.length / ITEMS_PER_PAGE);
+    const currentArticles = filteredArticles.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+
+    const handlePageChange = (page: number) => {
+        if (page >= 1 && page <= totalPages) {
+            setCurrentPage(page);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    };
+
     return (
         <div className="font-lexend bg-[#f8f9fc] min-h-screen flex flex-col overflow-x-hidden">
             <header className="sticky top-0 z-50 flex items-center justify-between border-b border-slate-200 bg-[#f8f9fc]/80 backdrop-blur-md px-6 py-3 lg:px-10">
-                <div className="flex items-center gap-4">
+                <Link href="/dashboard" className="flex items-center gap-4 hover:opacity-80 transition-opacity">
                     <div className="size-8 text-[#135bec]">
                         <span className="material-symbols-outlined text-3xl">auto_stories</span>
                     </div>
                     <h2 className="text-slate-900 text-xl font-bold leading-tight tracking-[-0.015em]">ReadAlly.AI</h2>
-                </div>
+                </Link>
                 <div className="flex flex-1 justify-end gap-6 items-center">
                     <button onClick={handleIngest} className="text-sm font-bold text-[#135bec] hover:bg-blue-50 px-3 py-1 rounded">
                         + Add Content
                     </button>
-                    <Link href="/profile" className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10 border-2 border-white shadow-sm" style={{ backgroundImage: 'url("https://api.dicebear.com/9.x/adventurer/svg?seed=Cookie")' }}></Link>
+                    <Link href="/profile" className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10 border-2 border-white shadow-sm hover:scale-105 transition-all" style={{ backgroundImage: `url("https://api.dicebear.com/9.x/adventurer/svg?seed=${useAuthStore.getState().user?.avatar_seed || 'Cookie'}")` }}></Link>
                 </div>
             </header>
 
@@ -144,40 +159,20 @@ export default function DashboardScreen() {
                     <div className="flex flex-col gap-6">
                         <div className="border-b border-slate-200">
                             <nav className="flex gap-8 overflow-x-auto pb-px">
-                                <button
-                                    onClick={() => setSelectedDifficulty('All')}
-                                    className={`border-b-[3px] ${selectedDifficulty === 'All' ? 'border-[#135bec] text-slate-900' : 'border-transparent text-slate-500 hover:text-slate-700'} pb-3 pt-2 px-1 text-sm font-bold whitespace-nowrap transition-colors`}
-                                >
-                                    All
-                                </button>
-                                <button
-                                    onClick={() => setSelectedDifficulty('Initial')}
-                                    className={`border-b-[3px] ${selectedDifficulty === 'Initial' ? 'border-[#135bec] text-slate-900' : 'border-transparent text-slate-500 hover:text-slate-700'} pb-3 pt-2 px-1 text-sm font-bold whitespace-nowrap transition-colors`}
-                                >
-                                    Initial
-                                </button>
-                                <button
-                                    onClick={() => setSelectedDifficulty('Intermediate')}
-                                    className={`border-b-[3px] ${selectedDifficulty === 'Intermediate' ? 'border-[#135bec] text-slate-900' : 'border-transparent text-slate-500 hover:text-slate-700'} pb-3 pt-2 px-1 text-sm font-bold whitespace-nowrap transition-colors`}
-                                >
-                                    Intermediate
-                                </button>
-                                <button
-                                    onClick={() => setSelectedDifficulty('Upper Intermediate')}
-                                    className={`border-b-[3px] ${selectedDifficulty === 'Upper Intermediate' ? 'border-[#135bec] text-slate-900' : 'border-transparent text-slate-500 hover:text-slate-700'} pb-3 pt-2 px-1 text-sm font-bold whitespace-nowrap transition-colors`}
-                                >
-                                    Upper Intermediate
-                                </button>
-                                <button
-                                    onClick={() => setSelectedDifficulty('Advanced')}
-                                    className={`border-b-[3px] ${selectedDifficulty === 'Advanced' ? 'border-[#135bec] text-slate-900' : 'border-transparent text-slate-500 hover:text-slate-700'} pb-3 pt-2 px-1 text-sm font-bold whitespace-nowrap transition-colors`}
-                                >
-                                    Advanced
-                                </button>
+                                {['All', 'Initial', 'Intermediate', 'Upper Intermediate', 'Advanced'].map((diff) => (
+                                    <button
+                                        key={diff}
+                                        onClick={() => { setSelectedDifficulty(diff); setCurrentPage(1); }}
+                                        className={`border-b-[3px] ${selectedDifficulty === diff ? 'border-[#135bec] text-slate-900' : 'border-transparent text-slate-500 hover:text-slate-700'} pb-3 pt-2 px-1 text-sm font-bold whitespace-nowrap transition-colors`}
+                                    >
+                                        {diff}
+                                    </button>
+                                ))}
                             </nav>
                         </div>
+
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                            {articles.filter(a => selectedDifficulty === 'All' || a.difficulty === selectedDifficulty).map((article: any) => (
+                            {currentArticles.map((article: any) => (
                                 <Link key={article.id} href={`/read/${article.id}`} className="group flex flex-col gap-3 pb-3 cursor-pointer">
                                     <div className="overflow-hidden rounded-xl">
                                         <div className="w-full bg-center bg-no-repeat aspect-video bg-cover transform group-hover:scale-105 transition-transform duration-500"
@@ -194,6 +189,31 @@ export default function DashboardScreen() {
                                 </Link>
                             ))}
                         </div>
+
+                        {/* Pagination Controls */}
+                        {totalPages > 1 && (
+                            <div className="flex justify-center items-center gap-4 pt-6 pb-12">
+                                <button
+                                    onClick={() => handlePageChange(currentPage - 1)}
+                                    disabled={currentPage === 1}
+                                    className="flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-200 bg-white text-slate-700 font-medium hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                >
+                                    <span className="material-symbols-outlined text-sm">arrow_back</span>
+                                    Previous
+                                </button>
+                                <span className="text-slate-500 text-sm font-medium">
+                                    Page {currentPage} of {totalPages}
+                                </span>
+                                <button
+                                    onClick={() => handlePageChange(currentPage + 1)}
+                                    disabled={currentPage === totalPages}
+                                    className="flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-200 bg-white text-slate-700 font-medium hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                >
+                                    Next
+                                    <span className="material-symbols-outlined text-sm">arrow_forward</span>
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </div>
             </main>

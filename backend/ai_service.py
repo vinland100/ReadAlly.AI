@@ -1,10 +1,14 @@
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
 import json
 import logging
 from http import HTTPStatus
 import dashscope
 from dashscope import Generation
 from models import DifficultyLevel
+import requests
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -112,9 +116,18 @@ class AIService:
             return []
 
     @staticmethod
-    def translate_paragraph(text: str) -> str:
+    def translate_paragraph(text: str):
         prompt = f"""
         Translate the following English paragraph into fluent, natural Chinese.
+        Output MUST be a valid JSON object with the following structure:
+        {{
+            "translation": "natural chinese translation",
+            "style": "description of the writing style (e.g. academic, conversational, poetic)",
+            "key_phrases": [
+                {{"en": "phrase", "cn": "chinese equivalent"}}
+            ]
+        }}
+        Do not output markdown or explanations outside the JSON.
 
         Text:
         {text}
@@ -122,27 +135,42 @@ class AIService:
         try:
             response = Generation.call(
                 model="qwen-flash",
-                messages=[{'role': 'system', 'content': 'You are a professional translator.'},
+                messages=[{'role': 'system', 'content': 'You are a professional translator. Output only JSON.'},
                           {'role': 'user', 'content': prompt}],
                 result_format='message'
             )
             if response.status_code == HTTPStatus.OK:
-                return response.output.choices[0].message.content.strip()
-            return "Translation failed."
+                content = response.output.choices[0].message.content.strip()
+                if content.startswith("```json"): content = content[7:]
+                if content.endswith("```"): content = content[:-3]
+                return json.loads(content)
+            return {"translation": "Translation failed."}
         except Exception as e:
             logger.error(f"Translation Exception: {e}")
-            return "Translation error."
+            return {"translation": "Translation error."}
 
     @staticmethod
-    def analyze_syntax(text: str) -> str:
+    def analyze_syntax(text: str):
         prompt = f"""
-        Analyze the syntax of the following English paragraph for a learner.
-        Highlight:
-        1. Sentence structures (Subject-Verb-Object, etc.)
-        2. Clauses (Relative clauses, Noun clauses)
-        3. Key grammatical points.
-
-        Keep the explanation in Chinese. Be concise and structured.
+        Analyze the syntax of the following English paragraph for an English learner.
+        Output MUST be a valid JSON object with the following structure:
+        {{
+            "structures": [
+                {{"pattern": "S-V-VO (主谓宾)", "content": "example from text", "explanation": "chinese explanation"}}
+            ],
+            "clauses": [
+                {{"type": "Relative clause (定语从句)", "content": "...", "explanation": "..."}}
+            ],
+            "grammar_points": [
+                {{"point": "Present Perfect", "point_cn": "现在完成时", "explanation": "Explain how it IS USED in this specific text. DO NOT include if not present."}}
+            ]
+        }}
+        
+        CRITICAL RULES:
+        1. ONLY include grammar_points that are ACTUALLY USED in the provided text.
+        2. If a grammar point is not clearly present, DO NOT include it.
+        3. The "explanation" must refer to the specific instance in the text.
+        4. Do not output markdown or explanations outside the JSON.
 
         Text:
         {text}
@@ -150,16 +178,19 @@ class AIService:
         try:
             response = Generation.call(
                 model="qwen-flash",
-                messages=[{'role': 'system', 'content': 'You are a grammar expert.'},
+                messages=[{'role': 'system', 'content': 'You are a grammar expert. Output only JSON.'},
                           {'role': 'user', 'content': prompt}],
                 result_format='message'
             )
             if response.status_code == HTTPStatus.OK:
-                return response.output.choices[0].message.content.strip()
-            return "Analysis failed."
+                content = response.output.choices[0].message.content.strip()
+                if content.startswith("```json"): content = content[7:]
+                if content.endswith("```"): content = content[:-3]
+                return json.loads(content)
+            return {"error": "Analysis failed."}
         except Exception as e:
             logger.error(f"Syntax Analysis Exception: {e}")
-            return "Analysis error."
+            return {"error": "Analysis error."}
 
     @staticmethod
     def generate_tts(text: str) -> bytes:
@@ -168,39 +199,32 @@ class AIService:
         Returns the audio content (bytes) directly (MP3 format).
         """
         try:
-            # Using the SDK class directly as per user example (though call method might vary slightly,
-            # I will follow the user provided snippet pattern but adapted for streaming/direct return)
-
-            # The user snippet used: dashscope.audio.qwen_tts.SpeechSynthesizer.call(...)
-            # I need to handle the return. It usually returns a Result object with 'audio_url' or binary content.
-            # dashscope SDK often saves to file if 'file_path' is provided, or provides url.
-
-            # Checking documentation logic via inference or standard patterns:
-            # If I want the raw bytes, I might need to download from the URL if it returns a URL,
-            # or check if it returns bytes.
-
-            # Let's try the standard call.
-            response = dashscope.audio.tts.SpeechSynthesizer.call(
+            # Using the correct SDK class as per user instructions
+            response = dashscope.audio.qwen_tts.SpeechSynthesizer.call(
                 model='qwen3-tts-flash',
                 text=text,
-                voice='Cherry'
+                voice='Rocky',
+                api_key=os.getenv("DASHSCOPE_API_KEY") 
             )
 
-            # The response usually contains audio_address or output directly?
-            # Qwen-tts often returns an audio buffer or url.
-            # According to docs (implied), save to file is common.
-            # For this web app, I want to stream it back.
-
-            if response.get_audio_data() is not None:
-                 return response.get_audio_data()
-            elif response.output and response.output.get("audio_address"):
-                 # Download the audio
-                 import requests
-                 r = requests.get(response.output["audio_address"])
-                 return r.content
+            # Check successful response
+            if response.status_code == HTTPStatus.OK:
+                # Structure: response.output['audio']['url']
+                if hasattr(response, 'output') and response.output and 'audio' in response.output and 'url' in response.output['audio']:
+                    audio_url = response.output['audio']['url']
+                    # Download the audio
+                    r = requests.get(audio_url)
+                    if r.status_code == 200:
+                        return r.content
+                    else:
+                        logger.error(f"TTS Download Error: {r.status_code}")
+                        return None
+                else:
+                    logger.error(f"TTS Response missing audio url: {response}")
+                    return None
             else:
-                 logger.error(f"TTS Error: {response}")
-                 return None
+                logger.error(f"TTS API Error: {response.code} - {response.message}")
+                return None
 
         except Exception as e:
             logger.error(f"TTS Exception: {e}")

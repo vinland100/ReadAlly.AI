@@ -3,19 +3,23 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import ReadingLayout from '@/components/reading/ReadingLayout';
 import ParagraphBlock from '@/components/reading/ParagraphBlock';
+import clsx from 'clsx';
 import api from '@/lib/api';
+import { useRouter } from 'next/navigation';
 import useTheme from '@/lib/useTheme';
 
 export default function ReadingView() {
-    useTheme('dark');
+    useTheme('light');
     const params = useParams();
     const articleId = params.articleId;
+    const router = useRouter();
 
     const [article, setArticle] = useState<any>(null);
     const [paragraphs, setParagraphs] = useState<any[]>([]);
     const [page, setPage] = useState(1);
     const [hasNext, setHasNext] = useState(false);
     const [loading, setLoading] = useState(true);
+    const [isRecording, setIsRecording] = useState(false);
 
     // Full Text TTS State
     const [isGlobalPlaying, setIsGlobalPlaying] = useState(false);
@@ -23,7 +27,7 @@ export default function ReadingView() {
     const audioRef = useRef<HTMLAudioElement | null>(null);
 
     useEffect(() => {
-        if(articleId) fetchPage(1);
+        if (articleId) fetchPage(1);
     }, [articleId]);
 
     const fetchPage = async (pageNum: number) => {
@@ -32,13 +36,15 @@ export default function ReadingView() {
             const res = await api.get(`/api/articles/${articleId}/page/${pageNum}`);
             setArticle(res.data.article);
 
-            // If page 1, replace. If next page, append?
-            // The requirement says "Pagination". Usually replace.
-            // But for continuous reading (TTS), appending might be better or handling page transitions.
-            // Let's implement traditional pagination (replace) for visual simplicity,
-            // but the TTS logic will need to handle fetching next page.
+            let paras = res.data.paragraphs;
+            // If the first paragraph is an image that matches the cover image, remove it to avoid duplicates
+            if (pageNum === 1 && res.data.article.cover_image) {
+                if (paras.length > 0 && paras[0].image_url === res.data.article.cover_image) {
+                    paras = paras.slice(1);
+                }
+            }
 
-            setParagraphs(res.data.paragraphs);
+            setParagraphs(paras);
             setHasNext(res.data.has_next);
             setPage(pageNum);
         } catch (e) {
@@ -51,7 +57,7 @@ export default function ReadingView() {
     const playParagraphAudio = async (text: string) => {
         // Stop global if playing
         if (isGlobalPlaying) {
-             stopGlobalTTS();
+            stopGlobalTTS();
         }
 
         try {
@@ -130,20 +136,36 @@ export default function ReadingView() {
         <ReadingLayout>
             {!loading && article ? (
                 <>
-                    <div className="mb-12 border-b border-slate-200 dark:border-slate-800 pb-8">
+                    <div className="mb-12 border-b border-slate-200 pb-8">
                         <div className="flex justify-between items-start">
-                             <h1 className="text-3xl md:text-4xl lg:text-[40px] font-bold text-slate-900 dark:text-white leading-tight mb-4 tracking-tight">{article.title}</h1>
-                             <button
-                                onClick={isGlobalPlaying ? stopGlobalTTS : startGlobalTTS}
-                                className={isGlobalPlaying ? "bg-red-500 text-white p-3 rounded-full shadow-lg hover:bg-red-600 transition-colors" : "bg-[#137fec] text-white p-3 rounded-full shadow-lg hover:bg-blue-600 transition-colors"}
-                             >
-                                <span className="material-symbols-outlined text-[24px]">{isGlobalPlaying ? "stop" : "play_arrow"}</span>
-                             </button>
+                            <h1 className="text-3xl md:text-4xl lg:text-[40px] font-bold text-slate-900 leading-tight mb-4 tracking-tight">{article.title}</h1>
                         </div>
-                        <div className="flex items-center gap-4 text-sm text-slate-500 dark:text-[#94a3b8]">
-                            <span className="bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded text-xs font-medium text-slate-600 dark:text-slate-300">{article.difficulty}</span>
+
+                        {article.cover_image && (
+                            <div className="my-8 rounded-2xl overflow-hidden shadow-xl shadow-slate-200/50">
+                                <img
+                                    src={article.cover_image}
+                                    alt={article.title}
+                                    className="w-full aspect-[16/9] object-cover"
+                                />
+                            </div>
+                        )}
+
+                        <div className="flex items-center gap-4 text-sm text-slate-500">
+                            <span className="bg-slate-100 px-2 py-0.5 rounded text-xs font-medium text-slate-600">{article.difficulty}</span>
                             <span>•</span>
-                            <span>{article.word_count} words</span>
+                            <span>{article.word_count !== undefined ? article.word_count : 0} words</span>
+                            <button
+                                onClick={isGlobalPlaying ? stopGlobalTTS : startGlobalTTS}
+                                className={clsx(
+                                    "ml-auto p-2 rounded-full transition-all flex items-center justify-center shadow-sm hover:shadow-md",
+                                    isGlobalPlaying
+                                        ? "bg-black text-white hover:bg-black/80 ring-2 ring-black/20"
+                                        : "bg-black text-white hover:bg-black/80 hover:scale-105 active:scale-95"
+                                )}
+                            >
+                                <span className="material-symbols-outlined text-[20px]">{isGlobalPlaying ? "stop" : "headphones"}</span>
+                            </button>
                         </div>
                     </div>
 
@@ -153,6 +175,7 @@ export default function ReadingView() {
                                 <ParagraphBlock
                                     id={para.id}
                                     content={para.content}
+                                    image_url={para.image_url}
                                     annotations={para.annotations}
                                     isActiveForTTS={index === currentTTSParaIndex}
                                     onPlayTTS={playParagraphAudio}
@@ -161,26 +184,42 @@ export default function ReadingView() {
                         ))}
                     </div>
 
-                    <div className="mt-12 flex justify-between">
-                         <button
-                            disabled={page === 1}
-                            onClick={() => fetchPage(page - 1)}
-                            className="px-6 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 disabled:opacity-50"
-                        >
-                            Previous
-                        </button>
+                    <div className="mt-12 flex justify-center border-t border-slate-200 dark:border-slate-800 pt-8">
                         <button
-                            disabled={!hasNext}
-                            onClick={() => fetchPage(page + 1)}
-                            className="px-6 py-2 rounded-lg bg-[#137fec] text-white disabled:opacity-50 hover:bg-blue-600"
+                            disabled={isRecording}
+                            onClick={async () => {
+                                if (isRecording) return;
+                                setIsRecording(true);
+                                try {
+                                    await api.post('/users/me/record-reading', null, {
+                                        params: {
+                                            article_id: articleId,
+                                            word_count: article.word_count
+                                        }
+                                    });
+                                    router.push('/dashboard');
+                                } catch (e: any) {
+                                    console.error("Failed to record reading", e);
+                                    if (e.response?.status === 401) {
+                                        alert("Session expired. Please sign in again.");
+                                        router.push('/');
+                                    } else {
+                                        router.push('/dashboard'); // Still redirect for other errors
+                                    }
+                                } finally {
+                                    setIsRecording(false);
+                                }
+                            }}
+                            className="w-full max-w-md flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-[#135bec] hover:bg-blue-700 text-white font-bold text-lg shadow-lg shadow-blue-500/20 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
                         >
-                            Next Page
+                            <span className="material-symbols-outlined">{isRecording ? "sync" : "check_circle"}</span>
+                            <span>{isRecording ? "Saving Progress..." : "Finish Reading"}</span>
                         </button>
                     </div>
                 </>
             ) : (
                 <div className="flex items-center justify-center h-64">
-                    <div className="text-slate-500 dark:text-slate-400">Loading Article...</div>
+                    <div className="text-slate-500">Loading Article...</div>
                 </div>
             )}
         </ReadingLayout>

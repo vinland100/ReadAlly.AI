@@ -4,6 +4,8 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import api from '@/lib/api';
 import { useEffect } from 'react';
+import clsx from 'clsx';
+import { useAuthStore } from '@/lib/store';
 
 export default function ProfileScreen() {
     const router = useRouter();
@@ -11,11 +13,16 @@ export default function ProfileScreen() {
     const [oldPassword, setOldPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [loading, setLoading] = useState(true);
+    const [isSelectingAvatar, setIsSelectingAvatar] = useState(false);
+    const [selectedSeed, setSelectedSeed] = useState('');
+
+    const AVATAR_SEEDS = ["Cookie", "Cinnamon", "Muffin", "Peanut", "Lulu", "Ginger", "Pepper", "Sugar", "Bear", "Zoe"];
 
     useEffect(() => {
         api.get('/users/me')
             .then(res => {
                 setUser(res.data);
+                setSelectedSeed(res.data.avatar_seed || 'Cookie');
                 setLoading(false);
             })
             .catch((e) => {
@@ -26,6 +33,18 @@ export default function ProfileScreen() {
 
     const handleSave = async () => {
         try {
+            const updateData: any = {};
+            if (selectedSeed !== user.avatar_seed) {
+                updateData.avatar_seed = selectedSeed;
+            }
+            // Add nickname update if input is managed
+
+            if (Object.keys(updateData).length > 0) {
+                await api.patch('/users/me', updateData);
+                await useAuthStore.getState().fetchUser(); // Sync global store
+                setUser({ ...user, ...updateData });
+            }
+
             if (oldPassword && newPassword) {
                 await api.post('/users/me/password', {
                     old_password: oldPassword,
@@ -35,7 +54,6 @@ export default function ProfileScreen() {
                 setOldPassword('');
                 setNewPassword('');
             }
-            // Here you could also update nickname if needed
             alert('Changes saved!');
         } catch (e: any) {
             alert(e.response?.data?.detail || 'Failed to save changes');
@@ -54,8 +72,8 @@ export default function ProfileScreen() {
                     <h1 className="text-xl font-bold tracking-tight">ReadAlly.AI</h1>
                 </div>
                 <div className="flex items-center gap-4">
-                    <button onClick={() => router.push('/dashboard')} className="flex items-center justify-center gap-2 rounded-full px-3 py-1 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 text-xs font-bold">Back</button>
-                    <div className="size-10 rounded-full bg-cover bg-center border-2 border-[#f9f506] cursor-pointer" style={{ backgroundImage: 'url("https://api.dicebear.com/9.x/adventurer/svg?seed=Cookie")' }}></div>
+                    <button onClick={() => router.push('/dashboard')} className="flex items-center justify-center gap-2 rounded-full px-3 py-1 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 text-xs font-bold transition-colors">Back</button>
+                    <div className="size-10 rounded-full bg-cover bg-center border-2 border-[#137fec] shadow-sm" style={{ backgroundImage: `url("https://api.dicebear.com/9.x/adventurer/svg?seed=${selectedSeed}")` }}></div>
                 </div>
             </header>
             <main className="flex-grow flex items-center justify-center p-4 sm:p-6 lg:p-10 relative overflow-hidden">
@@ -70,9 +88,29 @@ export default function ProfileScreen() {
                     <div className="p-6 sm:p-8 flex flex-col gap-8 overflow-y-auto max-h-[80vh]">
                         <div className="flex flex-col items-center gap-4">
                             <div className="relative group">
-                                <div className="size-32 rounded-full bg-cover bg-center border-4 border-white dark:border-gray-700 shadow-sm" style={{ backgroundImage: 'url("https://api.dicebear.com/9.x/adventurer/svg?seed=Cookie")' }}></div>
-                                <button className="absolute bottom-1 right-1 bg-[#f9f506] text-black size-9 rounded-full flex items-center justify-center shadow-md hover:scale-105 transition-transform cursor-pointer border-2 border-white dark:border-[#2c2b15]"><span className="material-symbols-outlined text-[18px]">edit</span></button>
+                                <div className="size-32 rounded-full bg-cover bg-center border-4 border-white dark:border-gray-700 shadow-md transition-all group-hover:shadow-lg" style={{ backgroundImage: `url("https://api.dicebear.com/9.x/adventurer/svg?seed=${selectedSeed}")` }}></div>
+                                <button onClick={() => setIsSelectingAvatar(!isSelectingAvatar)} className="absolute bottom-1 right-1 bg-[#137fec] text-white size-9 rounded-full flex items-center justify-center shadow-md hover:scale-110 active:scale-95 transition-all cursor-pointer border-2 border-white dark:border-[#2c2b15]"><span className="material-symbols-outlined text-[18px]">edit</span></button>
                             </div>
+
+                            {isSelectingAvatar && (
+                                <div className="w-full grid grid-cols-5 gap-3 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-700 animate-fade-in">
+                                    {AVATAR_SEEDS.map((seed) => (
+                                        <button
+                                            key={seed}
+                                            onClick={() => {
+                                                setSelectedSeed(seed);
+                                                setIsSelectingAvatar(false);
+                                            }}
+                                            className={clsx(
+                                                "size-12 rounded-full bg-cover bg-center border-2 transition-all hover:scale-110",
+                                                selectedSeed === seed ? "border-[#137fec] ring-2 ring-blue-100 scale-110" : "border-white dark:border-gray-600"
+                                            )}
+                                            style={{ backgroundImage: `url("https://api.dicebear.com/9.x/adventurer/svg?seed=${seed}")` }}
+                                        />
+                                    ))}
+                                </div>
+                            )}
+
                             <div className="text-center"><p className="text-gray-900 dark:text-white text-lg font-bold">{user?.nickname || 'Reader'}</p><p className="text-gray-500 dark:text-gray-400 text-sm">Member since 2023</p></div>
                         </div>
                         <form className="flex flex-col gap-6" onSubmit={(e) => e.preventDefault()}>
