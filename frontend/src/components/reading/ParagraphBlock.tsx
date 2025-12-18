@@ -15,9 +15,10 @@ interface ParagraphProps {
     id: number;
     content: string;
     image_url?: string | null;
+    audio_path?: string | null;
     annotations: Annotation[];
     isActiveForTTS: boolean;
-    onPlayTTS: (text: string) => void;
+    onPlayTTS: (text: string, audioPath?: string | null) => void;
 }
 
 interface TranslationResult {
@@ -32,7 +33,7 @@ interface SyntaxResult {
     grammar_points: { point: string; point_cn?: string; explanation: string; }[];
 }
 
-export default function ParagraphBlock({ id, content, image_url, annotations, isActiveForTTS, onPlayTTS }: ParagraphProps) {
+export default function ParagraphBlock({ id, content, image_url, audio_path, annotations, isActiveForTTS, onPlayTTS }: ParagraphProps) {
     const [translation, setTranslation] = useState<TranslationResult | null>(null);
     const [syntax, setSyntax] = useState<SyntaxResult | null>(null);
     const [loadingAction, setLoadingAction] = useState<string | null>(null);
@@ -122,36 +123,58 @@ export default function ParagraphBlock({ id, content, image_url, annotations, is
     };
 
     return (
-        <div className={clsx("paragraph-container relative group/para transition-all duration-300 p-2 rounded-xl", isActiveForTTS ? "bg-blue-50/10 ring-2 ring-[#137fec]" : "")}>
+        <div className={clsx(
+            "paragraph-container relative group/para transition-all duration-500 p-3 rounded-2xl border border-transparent",
+            isActiveForTTS ? "bg-blue-50/50 dark:bg-blue-900/10 border-blue-200/50 dark:border-blue-800/50 ring-1 ring-blue-400/20 shadow-lg shadow-blue-500/5" : "hover:bg-slate-50/50 dark:hover:bg-slate-800/20"
+        )}>
 
             {/* Right Side Buttons (Popover) - Redesigned to be subtle */}
-            <div className="absolute right-2 top-2 md:-right-12 md:top-0 md:bottom-0 md:pt-1 z-20 flex items-start opacity-100 md:opacity-0 md:group-hover/para:opacity-100 transition-opacity duration-200">
+            <div className="absolute right-2 top-2 md:-right-12 md:top-0 md:bottom-0 md:pt-1 z-20 flex items-start opacity-100 md:opacity-0 md:group-hover/para:opacity-100 transition-all duration-300">
                 <Popover className="relative">
-                    <Popover.Button className="p-1.5 rounded-md text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all outline-none">
-                        <span className="material-symbols-outlined text-[18px]">more_horiz</span>
+                    <Popover.Button className="p-2 rounded-lg text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all outline-none focus:ring-2 focus:ring-slate-200 dark:focus:ring-slate-700 active:scale-95">
+                        <span className="material-symbols-outlined text-[20px]">more_horiz</span>
                     </Popover.Button>
                     <Transition
                         as={Fragment}
                         enter="transition ease-out duration-200"
-                        enterFrom="opacity-0 translate-y-1"
-                        enterTo="opacity-100 translate-y-0"
+                        enterFrom="opacity-0 translate-y-1 scale-95"
+                        enterTo="opacity-100 translate-y-0 scale-100"
                         leave="transition ease-in duration-150"
-                        leaveFrom="opacity-100 translate-y-0"
-                        leaveTo="opacity-0 translate-y-1"
+                        leaveFrom="opacity-100 translate-y-0 scale-100"
+                        leaveTo="opacity-0 translate-y-1 scale-95"
                     >
-                        <Popover.Panel className="absolute right-0 mt-1 w-48 origin-top-right rounded-lg bg-white dark:bg-[#1e293b] shadow-xl border border-slate-100 dark:border-slate-700/50 overflow-hidden z-30 ring-1 ring-black/5">
-                            <div className="p-1 flex flex-col gap-0.5">
-                                <button onClick={handleTranslate} className="w-full flex items-center gap-2.5 px-2 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50 rounded-md transition-colors text-left group/btn">
-                                    <span className="material-symbols-outlined text-[18px] text-slate-400 group-hover/btn:text-blue-500 transition-colors">translate</span>
+                        <Popover.Panel className="absolute right-0 mt-2 w-48 origin-top-right rounded-xl bg-white dark:bg-[#1e293b] shadow-2xl border border-slate-100 dark:border-slate-700/50 overflow-hidden z-30 ring-1 ring-black/5">
+                            <div className="p-1.5 flex flex-col gap-1">
+                                <button
+                                    onClick={handleTranslate}
+                                    className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 dark:hover:text-blue-400 rounded-lg transition-all active:scale-[0.97] group/btn"
+                                >
+                                    <span className="material-symbols-outlined text-[20px] text-slate-400 group-hover/btn:text-blue-500 transition-colors">translate</span>
                                     <span>Translate</span>
                                 </button>
-                                <button onClick={handleSyntax} className="w-full flex items-center gap-2.5 px-2 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50 rounded-md transition-colors text-left group/btn">
-                                    <span className="material-symbols-outlined text-[18px] text-slate-400 group-hover/btn:text-emerald-500 transition-colors">school</span>
+                                <button
+                                    onClick={handleSyntax}
+                                    className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:text-emerald-600 dark:hover:text-emerald-400 rounded-lg transition-all active:scale-[0.97] group/btn"
+                                >
+                                    <span className="material-symbols-outlined text-[20px] text-slate-400 group-hover/btn:text-emerald-500 transition-colors">school</span>
                                     <span>Syntax</span>
                                 </button>
-                                <button onClick={() => onPlayTTS(content)} className="w-full flex items-center gap-2.5 px-2 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700/50 rounded-md transition-colors text-left group/btn">
-                                    <span className="material-symbols-outlined text-[18px] text-slate-400 group-hover/btn:text-purple-500 transition-colors">volume_up</span>
-                                    <span>Read</span>
+                                <button
+                                    onClick={() => onPlayTTS(content, audio_path)}
+                                    className={clsx(
+                                        "w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition-all active:scale-[0.97] group/btn",
+                                        isActiveForTTS
+                                            ? "bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400"
+                                            : "text-slate-600 dark:text-slate-300 hover:bg-purple-50 dark:hover:bg-purple-900/20 hover:text-purple-600 dark:hover:text-purple-400"
+                                    )}
+                                >
+                                    <span className={clsx(
+                                        "material-symbols-outlined text-[20px] transition-colors",
+                                        isActiveForTTS ? "text-purple-500 animate-pulse" : "text-slate-400 group-hover/btn:text-purple-500"
+                                    )}>
+                                        {isActiveForTTS ? "pause_circle" : "volume_up"}
+                                    </span>
+                                    <span>{isActiveForTTS ? "Reading..." : "Read"}</span>
                                 </button>
                             </div>
                         </Popover.Panel>

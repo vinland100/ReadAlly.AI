@@ -108,11 +108,12 @@ def get_article_page(
             "content": p.content,
             "image_url": p.image_url,
             "order_index": p.order_index,
+            "audio_path": p.audio_path,
             "annotations": p_annotations
         })
 
-    total_paras = session.exec(select(Paragraph).where(Paragraph.article_id == article_id)).all()
-    has_next = (offset + limit) < len(total_paras)
+    total_paras_count = session.exec(select(Paragraph).where(Paragraph.article_id == article.id)).all()
+    has_next = (offset + limit) < len(total_paras_count)
 
     return {
         "article": article,
@@ -157,15 +158,33 @@ def get_paragraph_tts(
     p = session.exec(select(Paragraph).where(Paragraph.content == text)).first()
     
     if p and p.audio_path:
-        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        base_dir = os.path.dirname(os.path.abspath(__file__))
         abs_path = os.path.join(base_dir, p.audio_path)
         
         if os.path.exists(abs_path):
             with open(abs_path, "rb") as f:
                 return Response(content=f.read(), media_type="audio/mpeg")
     
-    # Fallback
-    audio_data = AIService.generate_tts(text)
-    if not audio_data:
-        raise HTTPException(status_code=500, detail="TTS generation failed")
-    return Response(content=audio_data, media_type="audio/mpeg")
+    # If audio_path is missing or file does not exist, return 404
+    raise HTTPException(status_code=404, detail="Audio file not found. Pre-generation required.")
+
+@router.get("/tts/{paragraph_id}")
+def get_tts_by_id(
+    paragraph_id: int,
+    session: Session = Depends(get_session)
+):
+    p = session.get(Paragraph, paragraph_id)
+    if not p:
+        raise HTTPException(status_code=404, detail="Paragraph not found")
+        
+    if not p.audio_path:
+         raise HTTPException(status_code=404, detail="Audio not generated for this paragraph")
+
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    abs_path = os.path.join(base_dir, p.audio_path)
+    
+    if os.path.exists(abs_path):
+        with open(abs_path, "rb") as f:
+            return Response(content=f.read(), media_type="audio/mpeg")
+
+    raise HTTPException(status_code=404, detail="Audio file missing on server")

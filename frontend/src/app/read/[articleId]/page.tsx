@@ -20,10 +20,10 @@ export default function ReadingView() {
     const [hasNext, setHasNext] = useState(false);
     const [loading, setLoading] = useState(true);
     const [isRecording, setIsRecording] = useState(false);
-
-    // Full Text TTS State
     const [isGlobalPlaying, setIsGlobalPlaying] = useState(false);
     const [currentTTSParaIndex, setCurrentTTSParaIndex] = useState<number | null>(null);
+    const [isTTSLoading, setIsTTSLoading] = useState(false);
+    const [activeParaId, setActiveParaId] = useState<number | null>(null);
     const audioRef = useRef<HTMLAudioElement | null>(null);
 
     useEffect(() => {
@@ -54,28 +54,97 @@ export default function ReadingView() {
         }
     };
 
-    const playParagraphAudio = async (text: string) => {
+    const playParagraphAudio = async (text: string, paraId: number, index: number, audioPath?: string | null) => {
+        if (isTTSLoading) return;
+
+        // Robust backend root calculation
+        let baseUrl = api.defaults.baseURL || "";
+        if (!baseUrl.startsWith('http') && typeof window !== 'undefined') {
+            baseUrl = window.location.origin + baseUrl;
+        }
+        // Remove trailing slash and /api
+        const backendUrl = baseUrl.replace(/\/api\/?$/, '').replace(/\/+$/, '');
+
+        // Ensure audioPath doesn't result in double slashes if it has leading slash
+        // Use the new ID-based endpoint
+        const staticUrl = `${backendUrl}/api/tts/${paraId}`;
+
+        // If clicking the same paragraph that is already playing, stop it.
+        if (activeParaId === paraId && audioRef.current && !audioRef.current.paused) {
+            stopGlobalTTS();
+            return;
+        }
+
         // Stop global if playing
         if (isGlobalPlaying) {
             stopGlobalTTS();
         }
 
+        setIsTTSLoading(true);
+        setActiveParaId(paraId);
+        setCurrentTTSParaIndex(index);
+
         try {
-            const res = await api.get('/api/tts/paragraph', {
-                params: { text },
-                responseType: 'blob'
-            });
-            const url = URL.createObjectURL(res.data);
-            const audio = new Audio(url);
-            audio.play();
+            if (!paraId) {
+                console.warn(`No paraId provided`);
+                setIsTTSLoading(false);
+                setActiveParaId(null);
+                setCurrentTTSParaIndex(null);
+                return;
+            }
+
+            const audio = new Audio(staticUrl);
+            audioRef.current = audio;
+
+            const onAudioReady = () => {
+                setIsTTSLoading(false);
+                audio.play().catch(e => {
+                    console.error("Playback failed", e);
+                    setIsTTSLoading(false);
+                    setActiveParaId(null);
+                    setCurrentTTSParaIndex(null);
+                });
+            };
+
+            audio.oncanplaythrough = onAudioReady;
+            // Fallback for cached audio
+            if (audio.readyState >= 4) {
+                onAudioReady();
+            }
+
+            audio.onended = () => {
+                setIsTTSLoading(false);
+                if (!isGlobalPlaying) {
+                    setActiveParaId(null);
+                    setCurrentTTSParaIndex(null);
+                }
+            };
+
+            audio.onerror = () => {
+                console.error("Audio playback error:", staticUrl);
+                setIsTTSLoading(false);
+                setActiveParaId(null);
+                setCurrentTTSParaIndex(null);
+            };
+
+            // Safeguard: Reset loading state after 10s if nothing happens
+            setTimeout(() => {
+                if (isTTSLoading && audioRef.current === audio) {
+                    setIsTTSLoading(false);
+                }
+            }, 10000);
+
         } catch (e) {
             console.error("TTS failed", e);
+            setIsTTSLoading(false);
+            setActiveParaId(null);
+            setCurrentTTSParaIndex(null);
         }
     };
 
     // Global TTS Logic
     const startGlobalTTS = () => {
-        if (paragraphs.length === 0) return;
+        if (paragraphs.length === 0 || isTTSLoading) return;
         setIsGlobalPlaying(true);
         playSequence(0);
     };
@@ -83,8 +152,13 @@ export default function ReadingView() {
     const stopGlobalTTS = () => {
         setIsGlobalPlaying(false);
         setCurrentTTSParaIndex(null);
+        setActiveParaId(null);
+        setIsTTSLoading(false);
         if (audioRef.current) {
             audioRef.current.pause();
+            audioRef.current.onended = null;
+            audioRef.current.oncanplay = null;
+            audioRef.current.onerror = null;
             audioRef.current = null;
         }
     };
@@ -92,9 +166,6 @@ export default function ReadingView() {
     const playSequence = async (index: number) => {
         if (index >= paragraphs.length) {
             if (hasNext) {
-                // Auto load next page
-                // This is complex because we need to wait for state update.
-                // Simplified: Stop at end of page.
                 stopGlobalTTS();
                 alert("End of page. Please click next page to continue.");
             } else {
@@ -103,31 +174,65 @@ export default function ReadingView() {
             return;
         }
 
+        // We don't check !isGlobalPlaying here yet because we need to set state first
         setCurrentTTSParaIndex(index);
+        setActiveParaId(paragraphs[index].id);
 
-        // Auto Scroll
+        // Auto Scroll to center
         const element = document.getElementById(`para-${paragraphs[index].id}`);
         if (element) {
             element.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
 
+        setIsTTSLoading(true);
+        // Robust backend root calculation
+        let baseUrl = api.defaults.baseURL || "";
+        if (!baseUrl.startsWith('http') && typeof window !== 'undefined') {
+            baseUrl = window.location.origin + baseUrl;
+        }
+        const backendUrl = baseUrl.replace(/\/api\/?$/, '').replace(/\/+$/, '');
+
+        const para = paragraphs[index];
+        const staticUrl = `${backendUrl}/api/tts/${para.id}`;
+
         try {
-            const text = paragraphs[index].content;
-            const res = await api.get('/api/tts/paragraph', {
-                params: { text },
-                responseType: 'blob'
-            });
-            const url = URL.createObjectURL(res.data);
-            const audio = new Audio(url);
+            if (!para.id) {
+                console.warn(`No paragraph ID at index ${index}, skipping...`);
+                // Skip to next instead of stopping
+                playSequence(index + 1);
+                return;
+            }
+
+            const audio = new Audio(staticUrl);
             audioRef.current = audio;
+
+            const onAudioReady = () => {
+                setIsTTSLoading(false);
+                audio.play().catch(e => {
+                    console.error("Sequence Playback failed", e);
+                    // Skip if playback fails
+                    playSequence(index + 1);
+                });
+            };
+
+            audio.oncanplaythrough = onAudioReady;
+            if (audio.readyState >= 4) {
+                onAudioReady();
+            }
 
             audio.onended = () => {
                 playSequence(index + 1);
             };
 
-            audio.play();
+            audio.onerror = () => {
+                console.error("Sequence playback error at index", index, staticUrl);
+                // Skip on error too
+                playSequence(index + 1);
+            };
+
         } catch (e) {
             console.error("TTS Sequence failed", e);
+            setIsTTSLoading(false);
             stopGlobalTTS();
         }
     };
@@ -176,9 +281,10 @@ export default function ReadingView() {
                                     id={para.id}
                                     content={para.content}
                                     image_url={para.image_url}
+                                    audio_path={para.audio_path}
                                     annotations={para.annotations}
                                     isActiveForTTS={index === currentTTSParaIndex}
-                                    onPlayTTS={playParagraphAudio}
+                                    onPlayTTS={(text, audioPath) => playParagraphAudio(text, para.id, index, audioPath)}
                                 />
                             </div>
                         ))}
