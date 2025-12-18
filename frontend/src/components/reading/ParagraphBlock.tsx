@@ -83,7 +83,7 @@ export default function ParagraphBlock({ id, content, image_url, annotations, is
 
     // Render Text with Highlights
     const renderContent = () => {
-        if (!annotations || annotations.length === 0) return <p className="text-lg md:text-xl text-slate-800 dark:text-slate-200 leading-[1.8] font-normal tracking-wide">{content}</p>;
+        if (!annotations || annotations.length === 0) return <p className="text-lg md:text-xl text-slate-800 dark:text-slate-200 leading-[1.8] font-normal tracking-wide pr-10 md:pr-0">{content}</p>;
 
         // Split content by words and reconstruct (simplified approach)
         // Better approach: Find indices of words and splice.
@@ -118,14 +118,14 @@ export default function ParagraphBlock({ id, content, image_url, annotations, is
             parts = newParts;
         });
 
-        return <p className="text-lg md:text-xl text-slate-800 dark:text-slate-200 leading-[1.8] font-normal tracking-wide">{parts}</p>;
+        return <p className="text-lg md:text-xl text-slate-800 dark:text-slate-200 leading-[1.8] font-normal tracking-wide pr-10 md:pr-0">{parts}</p>;
     };
 
     return (
         <div className={clsx("paragraph-container relative group/para transition-all duration-300 p-2 rounded-xl", isActiveForTTS ? "bg-blue-50/10 ring-2 ring-[#137fec]" : "")}>
 
             {/* Right Side Buttons (Popover) - Redesigned to be subtle */}
-            <div className="absolute -right-12 top-0 bottom-0 flex items-start pt-1 z-20 opacity-0 group-hover/para:opacity-100 transition-opacity duration-200">
+            <div className="absolute right-2 top-2 md:-right-12 md:top-0 md:bottom-0 md:pt-1 z-20 flex items-start opacity-100 md:opacity-0 md:group-hover/para:opacity-100 transition-opacity duration-200">
                 <Popover className="relative">
                     <Popover.Button className="p-1.5 rounded-md text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all outline-none">
                         <span className="material-symbols-outlined text-[18px]">more_horiz</span>
