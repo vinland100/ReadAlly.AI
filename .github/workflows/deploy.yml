@@ -29,14 +29,14 @@ jobs:
 
       - name: Downcase Image Name
         run: |
-          echo "REPO_LOWER=${GITHUB_REPOSITORY,,}" >> $GITHUB_ENV
+          echo "OWNER_LOWER=${GITHUB_REPOSITORY_OWNER,,}" >> $GITHUB_ENV
 
       # Backend Build
       - name: Extract metadata (tags, labels) for Backend
         id: meta-backend
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.REPO_LOWER }}-backend
+          images: ${{ env.REGISTRY }}/${{ env.OWNER_LOWER }}/readally-backend
 
       - name: Build and push Backend
         uses: docker/build-push-action@v5
@@ -51,7 +51,7 @@ jobs:
         id: meta-frontend
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.REPO_LOWER }}-frontend
+          images: ${{ env.REGISTRY }}/${{ env.OWNER_LOWER }}/readally-frontend
 
       - name: Build and push Frontend
         uses: docker/build-push-action@v5
