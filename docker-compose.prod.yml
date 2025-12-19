@@ -9,6 +9,7 @@ services:
       - "8000:8000"
     volumes:
       - ./readally.db:/app/readally.db
+      - ./static:/app/static
     env_file:
       - .env
 

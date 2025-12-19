@@ -2,6 +2,7 @@
 __pycache__/
 *.py[cod]
 *$py.class
+*.db
 .venv/
 venv/
 .env
@@ -12,3 +13,8 @@ node_modules/
 dist/
 build/
 .pnpm-store/
+
+# Generated Content
+backend/static/*
+!backend/static/.gitkeep
+static/
