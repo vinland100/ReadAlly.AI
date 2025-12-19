@@ -56,10 +56,10 @@ class Token(BaseModel):
 def on_startup():
     create_db_and_tables()
     
-    # Schedule Shanbay crawler at 9:45 AM daily
-    scheduler.add_job(fetch_shanbay_articles, 'cron', hour=9, minute=45)
+    # Schedule Shanbay crawler at 10:00 AM daily
+    scheduler.add_job(fetch_shanbay_articles, 'cron', hour=10, minute=0, timezone=CN_TZ)
     scheduler.start()
-    print("Scheduler started. Shanbay crawler set for 9:45 AM.")
+    print("Scheduler started. Shanbay crawler set for 10:00 AM.")
 
 @app.post("/admin/crawl_shanbay")
 def trigger_crawl():
