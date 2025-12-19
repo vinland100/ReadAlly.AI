@@ -84,7 +84,7 @@ export default function ParagraphBlock({ id, content, image_url, audio_path, ann
 
     // Render Text with Highlights
     const renderContent = () => {
-        if (!annotations || annotations.length === 0) return <p className="text-lg md:text-xl text-slate-800 dark:text-slate-200 leading-[1.8] font-normal tracking-wide pr-10 md:pr-0">{content}</p>;
+        if (!annotations || annotations.length === 0) return <p className="text-lg md:text-xl text-slate-800 dark:text-slate-200 leading-[1.8] font-normal tracking-wide pr-10 xl:pr-0">{content}</p>;
 
         // Split content by words and reconstruct (simplified approach)
         // Better approach: Find indices of words and splice.
@@ -119,7 +119,7 @@ export default function ParagraphBlock({ id, content, image_url, audio_path, ann
             parts = newParts;
         });
 
-        return <p className="text-lg md:text-xl text-slate-800 dark:text-slate-200 leading-[1.8] font-normal tracking-wide pr-10 md:pr-0">{parts}</p>;
+        return <p className="text-lg md:text-xl text-slate-800 dark:text-slate-200 leading-[1.8] font-normal tracking-wide pr-10 xl:pr-0">{parts}</p>;
     };
 
     return (
