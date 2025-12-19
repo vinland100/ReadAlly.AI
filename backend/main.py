@@ -8,7 +8,7 @@ from models import User, Article, Paragraph, VocabularyAnnotation
 from auth import get_password_hash, verify_password, create_access_token, get_current_user
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel
-import ingest_service
+
 import reading_service
 import uvicorn
 import os
@@ -25,7 +25,7 @@ app = FastAPI(title="ReadAlly.AI Backend")
 
 scheduler = BackgroundScheduler()
 
-app.include_router(ingest_service.router, tags=["Ingestion"])
+
 app.include_router(reading_service.router, prefix="/api", tags=["Reading"])
 
 # CORS
@@ -56,10 +56,10 @@ class Token(BaseModel):
 def on_startup():
     create_db_and_tables()
     
-    # Schedule Shanbay crawler at 3:00 AM daily
-    scheduler.add_job(fetch_shanbay_articles, 'cron', hour=3, minute=0)
+    # Schedule Shanbay crawler at 9:45 AM daily
+    scheduler.add_job(fetch_shanbay_articles, 'cron', hour=9, minute=45)
     scheduler.start()
-    print("Scheduler started. Shanbay crawler set for 4:00 AM.")
+    print("Scheduler started. Shanbay crawler set for 9:45 AM.")
 
 @app.post("/admin/crawl_shanbay")
 def trigger_crawl():

@@ -129,7 +129,7 @@ export default function ParagraphBlock({ id, content, image_url, audio_path, ann
         )}>
 
             {/* Right Side Buttons (Popover) - Redesigned to be subtle */}
-            <div className="absolute right-2 top-2 md:-right-12 md:top-0 md:bottom-0 md:pt-1 z-20 flex items-start opacity-100 md:opacity-0 md:group-hover/para:opacity-100 transition-all duration-300">
+            <div className="absolute right-2 top-2 xl:-right-12 xl:top-0 xl:bottom-0 xl:pt-1 z-20 flex items-start opacity-100 xl:opacity-0 xl:group-hover/para:opacity-100 transition-all duration-300">
                 <Popover className="relative">
                     <Popover.Button className="p-2 rounded-lg text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all outline-none focus:ring-2 focus:ring-slate-200 dark:focus:ring-slate-700 active:scale-95">
                         <span className="material-symbols-outlined text-[20px]">more_horiz</span>

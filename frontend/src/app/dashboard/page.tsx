@@ -43,17 +43,7 @@ export default function DashboardScreen() {
         });
     }, []);
 
-    const handleIngest = async () => {
-        const url = prompt("Enter URL to ingest:");
-        if (url) {
-            try {
-                await api.post('/ingest/url', null, { params: { url } });
-                fetchArticles();
-            } catch (e) {
-                alert("Ingestion failed");
-            }
-        }
-    }
+
 
     if (loading) {
         return (
@@ -89,9 +79,7 @@ export default function DashboardScreen() {
                     <h2 className="text-slate-900 text-xl font-bold leading-tight tracking-[-0.015em]">ReadAlly.AI</h2>
                 </Link>
                 <div className="flex flex-1 justify-end gap-6 items-center">
-                    <button onClick={handleIngest} className="text-sm font-bold text-[#135bec] hover:bg-blue-50 px-3 py-1 rounded">
-                        + Add Content
-                    </button>
+
                     <Link href="/profile" className="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10 border-2 border-white shadow-sm hover:scale-105 transition-all" style={{ backgroundImage: `url("https://api.dicebear.com/9.x/adventurer/svg?seed=${useAuthStore.getState().user?.avatar_seed || 'Cookie'}")` }}></Link>
                 </div>
             </header>
