@@ -9,7 +9,7 @@ import logging
 from datetime import datetime, timedelta, timezone
 from sqlmodel import Session, select
 from database import engine
-from models import Article, Paragraph, DifficultyLevel, VocabularyAnnotation
+from models import Article, Paragraph, DifficultyLevel
 from ai_service import AIService
 
 # China Standard Time
@@ -125,48 +125,33 @@ def process_article_eagerly(session: Session, article: Article):
              time.sleep(0.5)
 
     # 4. Vocabulary (Batched by 20 to match pagination)
-    # We re-fetch all paragraphs to be safe
     all_paras = session.exec(select(Paragraph).where(Paragraph.article_id == article.id).order_by(Paragraph.order_index)).all()
-    
-    # Check if any annotations exist to avoid re-running (simple check)
-    # If first paragraph has no annotations, we might assume we need to run or run partial.
-    # But for eager processing, let's just loop and check batches.
     
     batch_size = 20
     for i in range(0, len(all_paras), batch_size):
         batch = all_paras[i:i+batch_size]
-        batch_ids = [p.id for p in batch]
         
-        # Check if this batch has annotations
-        existing = session.exec(select(VocabularyAnnotation).where(VocabularyAnnotation.paragraph_id.in_(batch_ids))).first()
-        if existing:
+        # Check if already has analysis
+        if all(p.analysis for p in batch):
             continue
 
         logger.info(f"  - Analyzing vocabulary for batch {i//batch_size + 1}")
-        batch_text = "\n\n".join([p.content for p in batch if p.content])
-        if not batch_text.strip(): continue
+        # Process per paragraph for now to align with new single-paragraph storage
+        # Or we can batch call and distribute. The new prompt is per-paragraph friendly.
+        # Let's do per-paragraph to ensure correct mapping without complex parsing.
         
-        try:
-            analysis_json = AIService.analyze_vocabulary(batch_text, article.difficulty.value)
-            
-            for item in analysis_json:
-                word = item.get("word")
-                if not word: continue
-                # Find which paragraph contains this word
-                for p in batch:
-                    if p.content and word.lower() in p.content.lower():
-                        annotation = VocabularyAnnotation(
-                            paragraph_id=p.id,
-                            word=word,
-                            type=item.get("type", "word"),
-                            definition=item.get("definition", ""),
-                            context_example=item.get("context_example", "")
-                        )
-                        session.add(annotation)
-                        break # Attach to first occurrence in batch
-            session.commit()
-        except Exception as e:
-            logger.error(f"Vocab analysis failed for batch {i}: {e}")
+        for p in batch:
+            if not p.analysis and p.content.strip():
+                try:
+                    analysis_json = AIService.analyze_vocabulary(p.content, article.difficulty.value)
+                    if isinstance(analysis_json, list):
+                        p.analysis = import_json_string(analysis_json)
+                        session.add(p)
+                except Exception as e:
+                    logger.error(f"Vocab analysis failed for paragraph {p.id}: {e}")
+                time.sleep(0.5)
+        
+        session.commit()
         time.sleep(1)
 
 def fetch_shanbay_articles():

@@ -52,41 +52,67 @@ class AIService:
     def analyze_vocabulary(text: str, level: str):
         """
         Analyzes the text for vocabulary based on the user's difficulty level.
-        Returns a JSON list of objects: {word, type, definition, context_example}
+        Returns a JSON list of objects representing the full text tokenization.
         """
 
         level_instruction = ""
         if level == "High School":
-            level_instruction = "Identify words that are above standard high school level (CEFR B2+)."
+            level_instruction = "Target: High School level (CEFR B2+)."
         elif level == "CET-4":
-             level_instruction = "Identify words that are difficult for CET-4 students (CEFR C1)."
+             level_instruction = "Target: CET-4 level (CEFR C1)."
         elif level == "IELTS":
-             level_instruction = "Identify sophisticated vocabulary, idioms, and nuances suitable for Band 7+."
+             level_instruction = "Target: IELTS Band 7+."
         else:
-             level_instruction = "Identify challenging words, idioms, and phrases."
+             level_instruction = "Target: Advanced learner."
 
         prompt = f"""
-        You are an expert English tutor. Analyze the following text segment.
-        {level_instruction}
+        You are an expert linguist and English tutor.
+        Goal: Analyze the following text {level_instruction}
 
-        Identify:
-        1. Uncommon words
-        2. Idioms
-        3. Phrasal verbs
-        4. Fixed expressions/collocations
-        5. Slang (if any)
+        Task:
+        1. Tokenize the entire text into a linear list of tokens (words and punctuation). 
+        2. Assign a 'type' to each token:
+           - 'normal': Standard words or punctuation.
+           - 'idiom': Part of an idiom.
+           - 'phrasal_verb': Part of a phrasal verb.
+           - 'fixed_expression': Part of a fixed expression or collocation.
+        3. For 'normal' tokens:
+           - Provide a concise Chinese definition.
+        4. For 'idiom'/'phrasal_verb'/'fixed_expression' (target items):
+           - These items may be multi-word or non-contiguous (e.g. "turn" ... "on").
+           - Assign a UNIQUE integer `group_id` to ALL tokens belonging to the SAME target item.
+           - Provide the MEANING of the WHOLE phrase in `definition`.
+           - Provide the `context_meaning` (meaning in this specific sentence).
+        5. 'normal' tokens should NOT have a `group_id` (or use null).
 
-        Output STRICTLY valid JSON format with this structure:
+        Output STRICTLY valid JSON format:
         [
             {{
-                "word": "exact phrase or word from text",
-                "type": "word" | "idiom" | "phrase" | "slang",
-                "definition": "Concise Chinese definition and explanation",
-                "context_example": "A short simple example sentence using this word/phrase"
+                "text": "The",
+                "type": "normal",
+                "definition": "定冠词",
+                "context_meaning": null,
+                "group_id": null
+            }},
+            {{
+                "text": "turn",
+                "type": "phrasal_verb",
+                "definition": "打开 (turn on)",
+                "context_meaning": "启动电源",
+                "group_id": 1
+            }},
+            {{
+                "text": "the", 
+                ...
+            }},
+            {{
+                "text": "on",
+                "type": "phrasal_verb",
+                "definition": "打开 (turn on)",
+                "context_meaning": "启动电源",
+                "group_id": 1
             }}
         ]
-
-        Do not output any markdown or explanations outside the JSON.
 
         Text:
         {text}

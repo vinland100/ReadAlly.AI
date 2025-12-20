@@ -6,13 +6,12 @@ from sqlmodel import Session, select, text
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from database import engine
-from models import Article, Paragraph, VocabularyAnnotation
+from models import Article, Paragraph
 from crawler.shanbay import fetch_shanbay_articles
 
 def clear_db():
     print("Clearing database...")
     with Session(engine) as session:
-        session.exec(text("DELETE FROM vocabularyannotation"))
         session.exec(text("DELETE FROM paragraph"))
         session.exec(text("DELETE FROM article"))
         session.commit()

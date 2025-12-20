@@ -46,19 +46,10 @@ class Paragraph(SQLModel, table=True):
     image_url: Optional[str] = None
 
     # Eager Processing Fields
-    translation: Optional[str] = None  # JSON string
-    syntax: Optional[str] = None       # JSON string
+    translation: Optional[str] = Field(default=None)  # JSON string
+    syntax: Optional[str] = Field(default=None)       # JSON string
     audio_path: Optional[str] = None   # Relative path to static audio
+    analysis: Optional[str] = Field(default=None)     # JSON string for full text analysis
 
     article: Article = Relationship(back_populates="paragraphs")
-    annotations: List["VocabularyAnnotation"] = Relationship(back_populates="paragraph", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
 
-class VocabularyAnnotation(SQLModel, table=True):
-    id: Optional[int] = Field(default=None, primary_key=True)
-    paragraph_id: int = Field(foreign_key="paragraph.id")
-    word: str
-    type: str # idiom, phrase, word, slang
-    definition: str
-    context_example: Optional[str] = None
-
-    paragraph: Paragraph = Relationship(back_populates="annotations")

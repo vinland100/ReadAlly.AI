@@ -282,7 +282,7 @@ export default function ReadingView() {
                                     content={para.content}
                                     image_url={para.image_url}
                                     audio_path={para.audio_path}
-                                    annotations={para.annotations}
+                                    analysis={para.analysis}
                                     isActiveForTTS={index === currentTTSParaIndex}
                                     onPlayTTS={(text, audioPath) => playParagraphAudio(text, para.id, index, audioPath)}
                                 />

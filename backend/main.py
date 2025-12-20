@@ -4,7 +4,7 @@ from sqlmodel import Session, select
 from typing import List, Optional
 from datetime import datetime, timedelta, timezone
 from database import create_db_and_tables, get_session
-from models import User, Article, Paragraph, VocabularyAnnotation
+from models import User, Article, Paragraph
 from auth import get_password_hash, verify_password, create_access_token, get_current_user
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel

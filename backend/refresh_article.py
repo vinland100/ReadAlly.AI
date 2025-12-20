@@ -1,6 +1,6 @@
 from sqlmodel import Session, select
 from database import engine
-from models import Article, Paragraph, VocabularyAnnotation
+from models import Article, Paragraph
 from crawler.shanbay import fetch_shanbay_articles
 import requests
 
@@ -13,9 +13,6 @@ def refresh_article(article_slug):
             # Delete dependents
             paras = session.exec(select(Paragraph).where(Paragraph.article_id == article.id)).all()
             for p in paras:
-                db_anns = session.exec(select(VocabularyAnnotation).where(VocabularyAnnotation.paragraph_id == p.id)).all()
-                for ann in db_anns:
-                    session.delete(ann)
                 session.delete(p)
             session.delete(article)
             session.commit()

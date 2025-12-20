@@ -4,22 +4,7 @@ import api from '@/lib/api';
 import clsx from 'clsx';
 import { useAuthStore } from '@/lib/store';
 
-interface Annotation {
-    word: string;
-    type: string;
-    definition: string;
-    context_example: string;
-}
 
-interface ParagraphProps {
-    id: number;
-    content: string;
-    image_url?: string | null;
-    audio_path?: string | null;
-    annotations: Annotation[];
-    isActiveForTTS: boolean;
-    onPlayTTS: (text: string, audioPath?: string | null) => void;
-}
 
 interface TranslationResult {
     translation: string;
@@ -33,12 +18,40 @@ interface SyntaxResult {
     grammar_points: { point: string; point_cn?: string; explanation: string; }[];
 }
 
-export default function ParagraphBlock({ id, content, image_url, audio_path, annotations, isActiveForTTS, onPlayTTS }: ParagraphProps) {
+// Token Interface from Backend
+interface Token {
+    text: string;
+    type: 'normal' | 'idiom' | 'phrasal_verb' | 'fixed_expression' | 'slang';
+    definition: string;
+    context_meaning?: string;
+    group_id?: number | null;
+}
+
+// Existing Props update
+interface ParagraphProps {
+    id: number;
+    content: string; // Keep for fallback
+    image_url?: string | null;
+    audio_path?: string | null;
+    analysis: Token[]; // New Prop
+    isActiveForTTS: boolean;
+    onPlayTTS: (text: string, audioPath?: string | null) => void;
+}
+
+// ... (Keep TranslationResult, SyntaxResult interfaces) ...
+
+export default function ParagraphBlock({ id, content, image_url, audio_path, analysis, isActiveForTTS, onPlayTTS }: ParagraphProps) {
     const [translation, setTranslation] = useState<TranslationResult | null>(null);
     const [syntax, setSyntax] = useState<SyntaxResult | null>(null);
     const [loadingAction, setLoadingAction] = useState<string | null>(null);
     const [activePanel, setActivePanel] = useState<'translation' | 'syntax' | null>(null);
-    const [selectedWord, setSelectedWord] = useState<Annotation | null>(null);
+
+    // Selection state for Pop-up
+    const [selectedToken, setSelectedToken] = useState<Token | null>(null);
+    const [hoveredGroupId, setHoveredGroupId] = useState<number | null>(null);
+
+    // ... (Keep handleTranslate, handleSyntax logic) ...
+    // Note: Ensure handleTranslate and handleSyntax use 'content' or reconstruct text from tokens if needed. 'content' prop is still passed, so it's safe.
 
     const handleTranslate = async () => {
         if (activePanel === 'translation') {
@@ -82,44 +95,73 @@ export default function ParagraphBlock({ id, content, image_url, audio_path, ann
         }
     };
 
-    // Render Text with Highlights
+
+    // Render Content based on Analysis Tokens
     const renderContent = () => {
-        if (!annotations || annotations.length === 0) return <p className="text-lg md:text-xl text-slate-800 dark:text-slate-200 leading-[1.8] font-normal tracking-wide pr-10 xl:pr-0">{content}</p>;
+        if (!analysis || analysis.length === 0) {
+            return <p className="text-lg md:text-xl text-slate-800 dark:text-slate-200 leading-[1.8] font-normal tracking-wide pr-10 xl:pr-0">{content}</p>;
+        }
 
-        // Split content by words and reconstruct (simplified approach)
-        // Better approach: Find indices of words and splice.
-        // For simplicity: We will use a regex replace approach with React render.
-        // Warning: This is tricky with overlapping phrases.
-        // Given the constraint, let's try to match phrases.
+        return (
+            <p className="text-lg md:text-xl text-slate-800 dark:text-slate-200 leading-[1.8] font-normal tracking-wide pr-10 xl:pr-0">
+                {analysis.map((token, index) => {
+                    const isGrouped = token.group_id !== null && token.group_id !== undefined;
+                    const isHovered = isGrouped && token.group_id === hoveredGroupId;
+                    const isTarget = token.type !== 'normal';
 
-        let parts: (string | React.ReactNode)[] = [content];
-
-        annotations.forEach((anno) => {
-            const newParts: (string | React.ReactNode)[] = [];
-            parts.forEach((part) => {
-                if (typeof part === 'string') {
-                    const regex = new RegExp(`\\b(${anno.word})\\b`, 'gi');
-                    const split = part.split(regex);
-                    // split results in ["prefix", "match", "suffix", ...]
-                    for (let i = 0; i < split.length; i++) {
-                        if (split[i].toLowerCase() === anno.word.toLowerCase()) {
-                            newParts.push(
-                                <span key={`${anno.word}-${i}`} onClick={() => setSelectedWord(anno)} className="highlight-word relative group">
-                                    {split[i]}
-                                </span>
-                            );
-                        } else {
-                            newParts.push(split[i]);
+                    // Determine if we need a trailing space
+                    // We add a space if:
+                    // 1. It is not the last token
+                    // 2. The NEXT token is NOT a punctuation mark that sticks to the left
+                    //    (e.g. comma, period, question mark, closing parenthesis, etc.)
+                    let hasTrailiingSpace = false;
+                    if (index < analysis.length - 1) {
+                        const nextToken = analysis[index + 1];
+                        const text = nextToken.text;
+                        // Punctuation that usually doesn't have space before it:
+                        // , . ! ? : ; ) ] } ' "
+                        // Be careful with ' (apostrophe could be "it's" -> 's)
+                        const noSpacePunctuation = /^[,\.!?:;）\]\}\)"']/;
+                        if (!noSpacePunctuation.test(text)) {
+                            hasTrailiingSpace = true;
                         }
                     }
-                } else {
-                    newParts.push(part);
-                }
-            });
-            parts = newParts;
-        });
 
-        return <p className="text-lg md:text-xl text-slate-800 dark:text-slate-200 leading-[1.8] font-normal tracking-wide pr-10 xl:pr-0">{parts}</p>;
+                    return (
+                        <React.Fragment key={index}>
+                            <span
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedToken(token);
+                                }}
+                                onMouseEnter={() => {
+                                    if (isGrouped) setHoveredGroupId(token.group_id!);
+                                }}
+                                onMouseLeave={() => {
+                                    if (isGrouped) setHoveredGroupId(null);
+                                }}
+                                className={clsx(
+                                    "cursor-pointer transition-colors duration-200 rounded-sm px-[1px]",
+                                    // Base hover for all words
+
+                                    "hover:bg-slate-200 dark:hover:bg-slate-700",
+                                    // Highlight style for identified phrases
+                                    isTarget && "border-b-[1.5px] border-dotted",
+                                    isTarget && token.type === 'idiom' && "border-blue-400 dark:border-blue-400",
+                                    isTarget && token.type === 'phrasal_verb' && "border-purple-400 dark:border-purple-400",
+                                    isTarget && token.type === 'fixed_expression' && "border-emerald-400 dark:border-emerald-400",
+                                    // Group Hover Effect
+                                    isHovered && "bg-slate-200 dark:bg-slate-700"
+                                )}
+                            >
+                                {token.text}
+                            </span>
+                            {hasTrailiingSpace && ' '}
+                        </React.Fragment>
+                    );
+                })}
+            </p>
+        );
     };
 
     return (
@@ -128,10 +170,10 @@ export default function ParagraphBlock({ id, content, image_url, audio_path, ann
             isActiveForTTS ? "bg-blue-50/50 dark:bg-blue-900/10 border-blue-200/50 dark:border-blue-800/50 ring-1 ring-blue-400/20 shadow-lg shadow-blue-500/5" : "hover:bg-slate-50/50 dark:hover:bg-slate-800/20"
         )}>
 
-            {/* Right Side Buttons (Popover) - Redesigned to be subtle */}
+            {/* Right Side Buttons (Popover) */}
             <div className="absolute right-2 top-2 xl:-right-12 xl:top-0 xl:bottom-0 xl:pt-1 z-20 flex items-start opacity-100 xl:opacity-0 xl:group-hover/para:opacity-100 transition-all duration-300">
                 <Popover className="relative">
-                    <Popover.Button className="p-2 rounded-lg text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all outline-none focus:ring-2 focus:ring-slate-200 dark:focus:ring-slate-700 active:scale-95">
+                    <Popover.Button className="p-2 rounded-lg text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all outline-none focus:ring-2 focus:ring-slate-200 dark:focus:ring-slate-700 active:scale-95 cursor-pointer">
                         <span className="material-symbols-outlined text-[20px]">more_horiz</span>
                     </Popover.Button>
                     <Transition
@@ -147,14 +189,14 @@ export default function ParagraphBlock({ id, content, image_url, audio_path, ann
                             <div className="p-1.5 flex flex-col gap-1">
                                 <button
                                     onClick={handleTranslate}
-                                    className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 dark:hover:text-blue-400 rounded-lg transition-all active:scale-[0.97] group/btn"
+                                    className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 dark:hover:text-blue-400 rounded-lg transition-all active:scale-[0.97] group/btn cursor-pointer"
                                 >
                                     <span className="material-symbols-outlined text-[20px] text-slate-400 group-hover/btn:text-blue-500 transition-colors">translate</span>
                                     <span>Translate</span>
                                 </button>
                                 <button
                                     onClick={handleSyntax}
-                                    className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:text-emerald-600 dark:hover:text-emerald-400 rounded-lg transition-all active:scale-[0.97] group/btn"
+                                    className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 hover:text-emerald-600 dark:hover:text-emerald-400 rounded-lg transition-all active:scale-[0.97] group/btn cursor-pointer"
                                 >
                                     <span className="material-symbols-outlined text-[20px] text-slate-400 group-hover/btn:text-emerald-500 transition-colors">school</span>
                                     <span>Syntax</span>
@@ -162,7 +204,7 @@ export default function ParagraphBlock({ id, content, image_url, audio_path, ann
                                 <button
                                     onClick={() => onPlayTTS(content, audio_path)}
                                     className={clsx(
-                                        "w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition-all active:scale-[0.97] group/btn",
+                                        "w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium rounded-lg transition-all active:scale-[0.97] group/btn cursor-pointer",
                                         isActiveForTTS
                                             ? "bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400"
                                             : "text-slate-600 dark:text-slate-300 hover:bg-purple-50 dark:hover:bg-purple-900/20 hover:text-purple-600 dark:hover:text-purple-400"
@@ -196,7 +238,7 @@ export default function ParagraphBlock({ id, content, image_url, audio_path, ann
                 renderContent()
             )}
 
-            {/* Inline Action Panels */}
+            {/* Inline Action Panels (Translation/Syntax) - Kept same as before */}
             {activePanel === 'translation' && (
                 <div className="mt-4 bg-slate-50 rounded-xl border border-slate-200 overflow-hidden shadow-sm animate-fade-in font-lexend">
                     <div className="flex items-center justify-between px-4 py-3 bg-white border-b border-slate-100">
@@ -214,7 +256,6 @@ export default function ParagraphBlock({ id, content, image_url, audio_path, ann
                         <p className="text-slate-900 text-lg leading-relaxed font-medium">
                             {translation?.translation || "Loading..."}
                         </p>
-
                         {translation?.key_phrases && translation.key_phrases.length > 0 && (
                             <div className="pt-4 border-t border-slate-100">
                                 <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-3">Key Phrases</h4>
@@ -259,7 +300,6 @@ export default function ParagraphBlock({ id, content, image_url, audio_path, ann
                                 </div>
                             </div>
                         )}
-
                         {syntax?.clauses && syntax.clauses.length > 0 && (
                             <div>
                                 <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-4">Clause Analysis (从句分析)</h4>
@@ -277,7 +317,6 @@ export default function ParagraphBlock({ id, content, image_url, audio_path, ann
                                 </div>
                             </div>
                         )}
-
                         {syntax?.grammar_points && syntax.grammar_points.length > 0 && (
                             <div>
                                 <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-4">Grammar Points (语法要点)</h4>
@@ -297,14 +336,15 @@ export default function ParagraphBlock({ id, content, image_url, audio_path, ann
                                 </div>
                             </div>
                         )}
+
                         {!syntax && <div className="text-slate-500 text-sm">Loading grammar analysis...</div>}
                     </div>
                 </div>
             )}
 
-            {/* Centered Modal for Vocabulary */}
-            <Transition appear show={!!selectedWord} as={Fragment}>
-                <Dialog as="div" className="relative z-50" onClose={() => setSelectedWord(null)}>
+            {/* Updated Pop-up (Modal) for Token Details */}
+            <Transition appear show={!!selectedToken} as={Fragment}>
+                <Dialog as="div" className="relative z-50" onClose={() => setSelectedToken(null)}>
                     <Transition.Child
                         as={Fragment}
                         enter="ease-out duration-300"
@@ -329,30 +369,91 @@ export default function ParagraphBlock({ id, content, image_url, audio_path, ann
                                 leaveTo="opacity-0 scale-95"
                             >
                                 <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white dark:bg-[#1e293b] p-6 text-left align-middle shadow-xl transition-all border border-slate-200 dark:border-slate-700">
-                                    <Dialog.Title as="div" className="flex justify-between items-start">
-                                        <div className="flex flex-col">
-                                            <h3 className="text-2xl font-bold text-slate-900 dark:text-white">{selectedWord?.word}</h3>
-                                            <span className="text-sm font-mono text-[#137fec] mt-1">{selectedWord?.type}</span>
+                                    <Dialog.Title as="div" className="flex justify-between items-start border-b border-slate-100 dark:border-slate-800 pb-4 mb-4">
+                                        <div className="flex flex-col gap-1">
+                                            <h3 className="text-2xl font-bold text-slate-900 dark:text-white leading-tight">
+                                                {(() => {
+                                                    if (!selectedToken) return '';
+                                                    if (selectedToken.group_id !== null && selectedToken.group_id !== undefined) {
+                                                        const groupTokens = analysis.map((t, i) => ({ ...t, index: i }))
+                                                            .filter(t => t.group_id === selectedToken.group_id);
+
+                                                        if (groupTokens.length > 1) {
+                                                            let title = groupTokens[0].text;
+                                                            for (let i = 1; i < groupTokens.length; i++) {
+                                                                const prev = groupTokens[i - 1];
+                                                                const curr = groupTokens[i];
+                                                                if (curr.index === prev.index + 1) {
+                                                                    title += ' ' + curr.text;
+                                                                } else {
+                                                                    title += '...' + curr.text;
+                                                                }
+                                                            }
+                                                            return title;
+                                                        }
+                                                    }
+                                                    return selectedToken.text;
+                                                })()}
+                                            </h3>
+                                            {selectedToken?.type !== 'normal' && (
+                                                <div className="flex items-center gap-2 mt-1">
+                                                    <span className="px-2 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">
+                                                        {selectedToken?.type?.replace('_', ' ')}
+                                                    </span>
+                                                    <span className="text-sm text-slate-500 dark:text-slate-400 font-medium">
+                                                        {(() => {
+                                                            switch (selectedToken?.type) {
+                                                                case 'idiom': return '习语';
+                                                                case 'phrasal_verb': return '短语动词';
+                                                                case 'fixed_expression': return '固定搭配';
+                                                                case 'slang': return '俚语';
+                                                                default: return '';
+                                                            }
+                                                        })()}
+                                                    </span>
+                                                </div>
+                                            )}
                                         </div>
-                                        <button onClick={() => setSelectedWord(null)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
-                                            <span className="material-symbols-outlined">close</span>
+                                        <button
+                                            onClick={() => setSelectedToken(null)}
+                                            className="p-1 -mr-2 -mt-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                                        >
+                                            <span className="material-symbols-outlined text-xl">close</span>
                                         </button>
                                     </Dialog.Title>
-                                    <div className="mt-4 space-y-4">
-                                        <div className="flex gap-3 text-left">
-                                            <div className="shrink-0 mt-0.5">
-                                                <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs font-bold uppercase tracking-wider">Def</span>
-                                            </div>
-                                            <p className="text-slate-700 dark:text-slate-300 text-sm leading-relaxed">{selectedWord?.definition}</p>
-                                        </div>
-                                        {selectedWord?.context_example && (
-                                            <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg border-l-2 border-[#137fec]">
-                                                <p className="text-slate-600 dark:text-slate-400 text-sm italic">"{selectedWord.context_example}"</p>
+                                    <div className="mt-6 flex flex-col gap-3">
+                                        {/* Context Meaning (Priority 1) */}
+                                        {selectedToken?.context_meaning && (
+                                            <div className="flex gap-4 text-left bg-blue-50/50 dark:bg-blue-900/10 p-4 rounded-xl border border-blue-100 dark:border-blue-800/50 relative overflow-hidden group">
+                                                <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-400 dark:bg-blue-500 rounded-l-xl"></div>
+                                                <div className="w-24 shrink-0 flex flex-col justify-start pt-0.5">
+                                                    <span className="text-[10px] font-bold text-blue-500 dark:text-blue-300 uppercase tracking-widest leading-none">Context</span>
+                                                    <span className="text-[10px] text-blue-400/70 dark:text-blue-400/70 scale-90 origin-top-left mt-1 font-medium">In this article</span>
+                                                </div>
+                                                <div className="relative">
+                                                    <p className="text-slate-800 dark:text-slate-200 text-sm leading-relaxed font-bold font-sans">
+                                                        {selectedToken.context_meaning}
+                                                    </p>
+                                                </div>
                                             </div>
                                         )}
+
+                                        {/* Definition (Priority 2) */}
+                                        <div className="flex gap-4 text-left bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-700 relative overflow-hidden group">
+                                            <div className="absolute left-0 top-0 bottom-0 w-1 bg-slate-300 dark:bg-slate-600 rounded-l-xl"></div>
+                                            <div className="w-24 shrink-0 flex flex-col justify-start pt-0.5">
+                                                <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest leading-none">Definition</span>
+                                                <span className="text-[10px] text-slate-400/70 dark:text-slate-500/70 scale-90 origin-top-left mt-1 font-medium">General meaning</span>
+                                            </div>
+                                            <div className="relative">
+                                                <p className="text-slate-700 dark:text-slate-300 text-sm leading-relaxed font-medium">
+                                                    {selectedToken?.definition}
+                                                </p>
+                                            </div>
+                                        </div>
                                     </div>
                                     <div className="mt-6 flex justify-end gap-3">
-                                        <button onClick={() => setSelectedWord(null)} className="px-4 py-2 text-sm font-medium text-slate-500 hover:bg-slate-100 rounded-lg transition-colors">Close</button>
+                                        <button onClick={() => setSelectedToken(null)} className="px-4 py-2 text-sm font-medium text-slate-500 hover:bg-slate-100 rounded-lg transition-colors">Close</button>
                                     </div>
                                 </Dialog.Panel>
                             </Transition.Child>

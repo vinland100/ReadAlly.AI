@@ -2,9 +2,12 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlmodel import Session, select
 from typing import List, Optional
 from database import get_session
-from models import Article, Paragraph, VocabularyAnnotation, DifficultyLevel
+from models import Article, Paragraph, DifficultyLevel
 from ai_service import AIService
 from auth import get_current_user
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -52,64 +55,39 @@ def get_article_page(
     if not paragraphs:
         return {"article": article, "paragraphs": [], "has_next": False}
 
-    # Check if we need to generate vocabulary annotations for this batch
-    # Heuristic: Check the first paragraph. If it has no annotations, assume the batch needs analysis.
-    # A robust implementation would check all or flag the page as analyzed.
-    # For now, we check if any annotation exists for these paragraphs.
-
-    # We combine text for analysis to save tokens/calls
-    # But we need to map back to paragraphs.
-    # The prompt asks for "exact word/phrase".
-
-    # Optimization: Check if *any* annotations exist for these paragraph IDs.
-    para_ids = [p.id for p in paragraphs]
-    existing_annotations = session.exec(select(VocabularyAnnotation).where(VocabularyAnnotation.paragraph_id.in_(para_ids))).all()
-
-    if not existing_annotations:
-        # Generate Analysis
-        full_page_text = "\n\n".join([p.content for p in paragraphs])
-        analysis_json = AIService.analyze_vocabulary(full_page_text, article.difficulty.value)
-
-        # Map annotations back to paragraphs
-        # This is tricky because the AI returns a list of words. We need to find which paragraph contains the word.
-        # We will iterate through paragraphs and assign.
-
-        new_annotations = []
-        for item in analysis_json:
-            word = item.get("word")
-            for p in paragraphs:
-                if word and word in p.content:
-                    # Create annotation
-                    annotation = VocabularyAnnotation(
-                        paragraph_id=p.id,
-                        word=word,
-                        type=item.get("type", "word"),
-                        definition=item.get("definition", ""),
-                        context_example=item.get("context_example", "")
-                    )
-                    session.add(annotation)
-                    new_annotations.append(annotation)
-                    # Break to avoid adding same word to multiple paragraphs if it appears multiple times?
-                    # Maybe better to add to the first occurrence or all.
-                    # For simplicity, first occurrence in this page.
-                    break
-        session.commit()
-        # Refetch with annotations
-        # Or just append locally if we eagerly loaded (we didn't).
-
-        # Re-querying to get relationships populated if needed, or just relying on lazy load
-
-    # Construct response with annotations embedded
-    result_paragraphs = []
+    # Check if we need to generate analysis
+    # We check each paragraph for the 'analysis' field.
+    
+    analyzed_paragraphs = []
+    
     for p in paragraphs:
-        p_annotations = session.exec(select(VocabularyAnnotation).where(VocabularyAnnotation.paragraph_id == p.id)).all()
-        result_paragraphs.append({
+        if not p.analysis:
+            # Generate Full Analysis
+            try:
+                # Use article difficulty or default
+                level = article.difficulty.value if article.difficulty else "Initial"
+                analysis_json = AIService.analyze_vocabulary(p.content, level)
+                
+                if isinstance(analysis_json, list):
+                     p.analysis = json.dumps(analysis_json, ensure_ascii=False)
+                     session.add(p)
+                     # We commit immediately or batch? Commit per paragraph is safer for now.
+                     session.commit()
+                     session.refresh(p)
+                else:
+                     logger.error(f"Invalid analysis format for paragraph {p.id}")
+            except Exception as e:
+                logger.error(f"Analysis failed for paragraph {p.id}: {e}")
+                # Continue without crashing, render plain text on frontend is better than 500
+        
+        # Prepare response
+        analyzed_paragraphs.append({
             "id": p.id,
             "content": p.content,
             "image_url": p.image_url,
             "order_index": p.order_index,
             "audio_path": p.audio_path,
-            "annotations": p_annotations
+            "analysis": json.loads(p.analysis) if p.analysis else []
         })
 
     total_paras_count = session.exec(select(Paragraph).where(Paragraph.article_id == article.id)).all()
@@ -118,7 +96,14 @@ def get_article_page(
     return {
         "article": article,
         "page": page_num,
-        "paragraphs": result_paragraphs,
+        "paragraphs": analyzed_paragraphs,
+        "has_next": has_next
+    }
+
+    return {
+        "article": article,
+        "page": page_num,
+        "paragraphs": analyzed_paragraphs,
         "has_next": has_next
     }
 
