@@ -119,21 +119,9 @@ jobs:
             
             # Ensure .env exists
             touch .env
-
-            # Migration: Move old data to new directory structure if needed
-            mkdir -p data
             
-            # Move DB if it exists in root but not in data
-            if [ -f readally.db ] && [ ! -f data/readally.db ]; then
-              echo "Migrating readally.db to ./data/"
-              mv readally.db data/
-            fi
-
-            # Move static folder if it exists in root but not in data
-            if [ -d static ] && [ ! -d data/static ]; then
-              echo "Migrating static/ to ./data/"
-              mv static data/
-            fi
+            # Ensure data directory exists
+            mkdir -p data
 
             # Login to GHCR on the server
             echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
