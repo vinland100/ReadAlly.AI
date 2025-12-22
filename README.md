@@ -44,25 +44,6 @@ To deploy the application using Docker (defaults to pulling pre-built images):
     ```
     *(To build from source instead, run `docker compose up -d --build`)*
 
-### Manual Local Development
-If you prefer to run the backend and frontend manually without Docker (e.g., for debugging), you need to configure environment variables for each service.
-
-### Manual Local Development
-If you prefer to run the backend and frontend manually without Docker (e.g., for debugging), you need to configure environment variables for each service.
-
-Each directory has its own `.env.example` file with appropriate defaults for local development.
-
-```bash
-# Backend
-cd backend
-cp .env.example .env
-# Edit .env to add your DASHSCOPE_API_KEY
-
-# Frontend
-cd ../frontend
-cp .env.example .env
-```
-
 ## Development Guide
 
 ### Prerequisites
