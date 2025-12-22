@@ -3,11 +3,7 @@ const nextConfig = {
     output: "standalone",
     serverActions: {
         allowedOrigins: [
-            "localhost:3000",
-            "127.0.0.1:3000",
-            "0.0.0.0:3000",
-            "vinland100.tech",
-            "www.vinland100.tech",
+            //开发环境保持为空，docker compose部署/生产环境使用环境变量灵活扩展
             ...(process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(",") : [])
         ],
     }
