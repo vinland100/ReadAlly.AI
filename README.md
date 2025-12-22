@@ -74,6 +74,10 @@ cd backend
 # (Optional) Create and activate venv, or simply use uv run
 # uv handles virtual environments automatically
 
+# Ensure environment variables are set
+# (You can copy from docker/.env or create your own)
+cp ../docker/.env .env
+
 # Install/Sync dependencies
 uv sync
 
@@ -91,6 +95,9 @@ The frontend uses `pnpm` for dependency management.
 ```bash
 # Enter frontend directory
 cd frontend
+
+# Ensure environment variables are set
+cp ../docker/.env .env
 
 # Install dependencies
 pnpm install
