@@ -25,8 +25,8 @@ This project uses a separate frontend and backend architecture:
 
 ## Deployment
 
-### Using Docker (Local Build)
-To deploy the application locally and build from source:
+### Using Docker
+To deploy the application using Docker (defaults to pulling pre-built images):
 
 1.  Make sure you have Docker and Docker Compose installed.
 2.  Navigate to the `docker` directory:
@@ -40,18 +40,20 @@ To deploy the application locally and build from source:
 4.  Edit `.env` and set the necessary variables (e.g., `DASHSCOPE_API_KEY`).
 5.  Start the services:
     ```bash
-    docker compose up -d --build
-    ```
-
-### Using Docker (Pull Images)
-To deploy using the pre-built images from GitHub Container Registry:
-
-1.  Navigate to the `docker` directory.
-2.  Set up your `.env` file as above.
-3.  Start the services:
-    ```bash
     docker compose up -d
     ```
+    *(To build from source instead, run `docker compose up -d --build`)*
+
+### Manual Local Development
+If you prefer to run the backend and frontend manually without Docker (e.g., for debugging), you need to configure environment variables for each service.
+
+You can simply reuse your Docker environment configuration:
+
+```bash
+# Copy from your docker config
+cp docker/.env backend/.env
+cp docker/.env frontend/.env
+```
 
 ## Development Guide
 
