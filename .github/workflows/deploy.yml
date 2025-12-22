@@ -68,6 +68,8 @@ jobs:
           push: true
           tags: ${{ steps.meta-frontend.outputs.tags }}
           labels: ${{ steps.meta-frontend.outputs.labels }}
+          build-args: |
+            NEXT_PUBLIC_API_URL=
 
   deploy:
     needs: build-and-push
@@ -87,10 +89,10 @@ jobs:
           # We use a simple grep/sed hack or just envsubst.
           # Since validation might fail if context is missing, we should ideally strip it.
           # But for simplicity, we can trust that 'docker compose pull' and 'up' might work if we ignore build.
-          # However, to be safe, let's remove lines starting with 'build:', 'context:', 'dockerfile:'.
+          # However, to be safe, let's remove lines starting with 'build:', 'context:', 'dockerfile:', 'args:', or '- NEXT_PUBLIC_'.
           # A proper parser is better, but sed works for this simple file structure.
           
-          sed -E '/^\s*(build|context|dockerfile):/d' docker/docker-compose.yaml > docker-compose.yml.tmp
+          sed -E '/^\s*(build|context|dockerfile|args):/d; /^\s*- NEXT_PUBLIC_/d' docker/docker-compose.yaml > docker-compose.yml.tmp
           
           # Fix variable syntax for envsubst
           # envsubst sees ${VAR:-default} as a literal string. We convert it to ${VAR} so envsubst can replace it.
