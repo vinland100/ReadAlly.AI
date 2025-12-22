@@ -23,6 +23,36 @@ This project uses a separate frontend and backend architecture:
 - **Database**: SQLite (default `readally.db`) / SQLModel
 - **AI/LLM Integration**: DashScope (Qwen), LangChain
 
+## Deployment
+
+### Using Docker (Local Build)
+To deploy the application locally and build from source:
+
+1.  Make sure you have Docker and Docker Compose installed.
+2.  Navigate to the `docker` directory:
+    ```bash
+    cd docker
+    ```
+3.  Copy the example environment file:
+    ```bash
+    cp .env.example .env
+    ```
+4.  Edit `.env` and set the necessary variables (e.g., `DASHSCOPE_API_KEY`).
+5.  Start the services:
+    ```bash
+    docker compose up -d --build
+    ```
+
+### Using Docker (Pull Images)
+To deploy using the pre-built images from GitHub Container Registry:
+
+1.  Navigate to the `docker` directory.
+2.  Set up your `.env` file as above.
+3.  Start the services:
+    ```bash
+    docker compose up -d
+    ```
+
 ## Development Guide
 
 ### Prerequisites

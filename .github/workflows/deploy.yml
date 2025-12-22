@@ -37,12 +37,15 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.OWNER_LOWER }}/readally-backend
-          tags: type=raw,value=latest
+          tags: |
+            type=raw,value=latest
+            type=sha
 
       - name: Build and push Backend
         uses: docker/build-push-action@v5
         with:
           context: ./backend
+          file: ./docker/backend.Dockerfile
           push: true
           tags: ${{ steps.meta-backend.outputs.tags }}
           labels: ${{ steps.meta-backend.outputs.labels }}
@@ -53,12 +56,15 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.OWNER_LOWER }}/readally-frontend
-          tags: type=raw,value=latest
+          tags: |
+            type=raw,value=latest
+            type=sha
 
       - name: Build and push Frontend
         uses: docker/build-push-action@v5
         with:
           context: ./frontend
+          file: ./docker/frontend.Dockerfile
           push: true
           tags: ${{ steps.meta-frontend.outputs.tags }}
           labels: ${{ steps.meta-frontend.outputs.labels }}
@@ -76,7 +82,16 @@ jobs:
           # Replace variable in compose file with actual owner name (lowercase)
           export OWNER=${{ github.repository_owner }}
           export GITHUB_REPOSITORY_OWNER=${OWNER,,}
-          envsubst < docker-compose.prod.yml > docker-compose.yml
+          # We use the single docker-compose.yaml but strip the build section
+          # because the server won't have the source code.
+          # We use a simple grep/sed hack or just envsubst.
+          # Since validation might fail if context is missing, we should ideally strip it.
+          # But for simplicity, we can trust that 'docker compose pull' and 'up' might work if we ignore build.
+          # However, to be safe, let's remove lines starting with 'build:', 'context:', 'dockerfile:'.
+          # A proper parser is better, but sed works for this simple file structure.
+          
+          sed -E '/^\s*(build|context|dockerfile):/d' docker/docker-compose.yaml > docker-compose.yml.tmp
+          envsubst < docker-compose.yml.tmp > docker-compose.yml
 
       - name: Copy files via SCP
         uses: appleboy/scp-action@master
@@ -86,7 +101,6 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           source: "docker-compose.yml"
           target: "~/readally"
-          # Ensure target directory exists
           command_timeout: 30m
 
       - name: Deploy via SSH
@@ -98,8 +112,23 @@ jobs:
           script: |
             cd ~/readally
             
-            # Ensure .env exists (Create dummy if missing to prevent error, or user must manually create it first)
+            # Ensure .env exists
             touch .env
+
+            # Migration: Move old data to new directory structure if needed
+            mkdir -p data
+            
+            # Move DB if it exists in root but not in data
+            if [ -f readally.db ] && [ ! -f data/readally.db ]; then
+              echo "Migrating readally.db to ./data/"
+              mv readally.db data/
+            fi
+
+            # Move static folder if it exists in root but not in data
+            if [ -d static ] && [ ! -d data/static ]; then
+              echo "Migrating static/ to ./data/"
+              mv static data/
+            fi
 
             # Login to GHCR on the server
             echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
@@ -108,5 +137,5 @@ jobs:
             docker compose pull
             docker compose up -d
             
-            # Prune old images to save space
+            # Prune old images
             docker image prune -f
