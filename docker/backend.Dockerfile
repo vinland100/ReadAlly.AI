@@ -4,7 +4,8 @@ FROM python:3.12-slim
 WORKDIR /app
 
 # Install uv (The Astral package manager)
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
+# Install uv (The Astral package manager)
+RUN pip install uv
 
 # Copy dependency files first
 COPY pyproject.toml uv.lock ./

@@ -29,5 +29,6 @@ services:
       - "3000:3000"
     environment:
       - INTERNAL_API_URL=http://readally-backend:8000
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
     env_file:
       - .env
