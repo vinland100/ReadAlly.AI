@@ -12,7 +12,8 @@ const nextConfig = {
         return 'readally-build-id'
     },
     async rewrites() {
-        const backendUrl = process.env.INTERNAL_API_URL || 'http://localhost:8000';
+        // 优先使用环境变量，其次尝试 Docker 内部服务名，最后回退到 localhost
+        const backendUrl = process.env.INTERNAL_API_URL || 'http://readally-backend:8000';
         return [
             {
                 source: '/api/:path*',
