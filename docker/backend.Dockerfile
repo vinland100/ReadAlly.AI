@@ -22,4 +22,5 @@ EXPOSE 8000
 
 # Run using the virtual environment created by uv
 # Note: uv creates venv in .venv by default
-CMD ["/app/.venv/bin/uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+ENV PATH="/app/.venv/bin:$PATH"
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

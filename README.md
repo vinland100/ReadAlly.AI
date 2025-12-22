@@ -47,12 +47,20 @@ To deploy the application using Docker (defaults to pulling pre-built images):
 ### Manual Local Development
 If you prefer to run the backend and frontend manually without Docker (e.g., for debugging), you need to configure environment variables for each service.
 
-You can simply reuse your Docker environment configuration:
+### Manual Local Development
+If you prefer to run the backend and frontend manually without Docker (e.g., for debugging), you need to configure environment variables for each service.
+
+Each directory has its own `.env.example` file with appropriate defaults for local development.
 
 ```bash
-# Copy from your docker config
-cp docker/.env backend/.env
-cp docker/.env frontend/.env
+# Backend
+cd backend
+cp .env.example .env
+# Edit .env to add your DASHSCOPE_API_KEY
+
+# Frontend
+cd ../frontend
+cp .env.example .env
 ```
 
 ## Development Guide
@@ -75,8 +83,8 @@ cd backend
 # uv handles virtual environments automatically
 
 # Ensure environment variables are set
-# (You can copy from docker/.env or create your own)
-cp ../docker/.env .env
+cp .env.example .env
+# Edit .env and set DASHSCOPE_API_KEY
 
 # Install/Sync dependencies
 uv sync
@@ -97,7 +105,7 @@ The frontend uses `pnpm` for dependency management.
 cd frontend
 
 # Ensure environment variables are set
-cp ../docker/.env .env
+cp .env.example .env
 
 # Install dependencies
 pnpm install

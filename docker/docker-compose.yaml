@@ -11,8 +11,10 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ./data/readally.db:/app/readally.db
-      - ./data/static:/app/static
+      - ./data:/app/data
+    environment:
+      - DATABASE_URL=sqlite:////app/data/readally.db
+      - STATIC_DIR=/app/data/static
     env_file:
       - .env
 
@@ -25,5 +27,7 @@ services:
     restart: always
     ports:
       - "3000:3000"
+    environment:
+      - INTERNAL_API_URL=http://readally-backend:8000
     env_file:
       - .env

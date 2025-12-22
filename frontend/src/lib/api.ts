@@ -1,13 +1,21 @@
 import axios from 'axios';
 
+const getBaseUrl = () => {
+    if (typeof window === 'undefined') {
+        // Server-side (SSR)
+        // 1. Try internal docker network URL first
+        if (process.env.INTERNAL_API_URL) return process.env.INTERNAL_API_URL;
+        // 2. Fallback to public URL (for manual dev) or localhost default
+        return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+    } else {
+        // Client-side (Browser)
+        // 1. Use public API URL if set
+        return process.env.NEXT_PUBLIC_API_URL || '/';
+    }
+};
+
 const api = axios.create({
-    // 逻辑：
-    // 1. 如果环境变量有值，直接用 (本地开发时设置为 http://localhost:8000)
-    // 2. 如果是生产环境，且没设变量，则通过判断 window 是否存在来决定
-    //    - 浏览器端：直接用 '/'，会自动拼接当前域名
-    //    - 服务端 (SSR)：必须写完整地址访问本地后端
-    baseURL: process.env.NEXT_PUBLIC_API_URL || 
-             (typeof window === 'undefined' ? 'http://localhost:8000' : '/'),
+    baseURL: getBaseUrl(),
 });
 
 api.interceptors.request.use((config) => {

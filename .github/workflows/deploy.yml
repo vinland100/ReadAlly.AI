@@ -91,6 +91,11 @@ jobs:
           # A proper parser is better, but sed works for this simple file structure.
           
           sed -E '/^\s*(build|context|dockerfile):/d' docker/docker-compose.yaml > docker-compose.yml.tmp
+          
+          # Fix variable syntax for envsubst
+          # envsubst sees ${VAR:-default} as a literal string. We convert it to ${VAR} so envsubst can replace it.
+          sed -i 's/\${GITHUB_REPOSITORY_OWNER:-vinland100}/\${GITHUB_REPOSITORY_OWNER}/g' docker-compose.yml.tmp
+          
           envsubst < docker-compose.yml.tmp > docker-compose.yml
 
       - name: Copy files via SCP
