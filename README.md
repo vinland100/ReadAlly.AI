@@ -23,98 +23,96 @@ This project uses a separate frontend and backend architecture:
 - **Database**: SQLite (default `readally.db`) / SQLModel
 - **AI/LLM Integration**: DashScope (Qwen), LangChain
 
-## Deployment
+## 🚀 Deployment & Usage
 
-### Using Docker
-To deploy the application using Docker (defaults to pulling pre-built images):
+We provide three ways to run ReadAlly.AI, depending on your needs.
 
-1.  Make sure you have Docker and Docker Compose installed.
-2.  Navigate to the `docker` directory:
+### 1. Production / One-Click Deployment (Recommended)
+**Use Case:** Running the app on a server or locally for usage (not development). Uses pre-built optimized images.
+
+1.  **Prereqs**: Install Docker and Docker Compose.
+2.  **Setup**:
     ```bash
     cd docker
-    ```
-3.  Copy the example environment file:
-    ```bash
     cp .env.example .env
+    # Edit .env: Set DASHSCOPE_API_KEY and SECRET_KEY
     ```
-4.  Edit `.env` and set the necessary variables (e.g., `DASHSCOPE_API_KEY`).
-5.  Start the services:
+3.  **Run**:
     ```bash
     docker compose up -d
     ```
-    *(To build from source instead, run `docker compose up -d --build`)*
+4.  **Access**:
+    -   Frontend: `http://localhost:3000`
+    -   Data (DB & Audio) is persisted in `./docker/data/`.
 
-## Development Guide
+### 2. Local Development (Standard)
+**Use Case:** Writing code, debugging, and contributing.
 
-### Prerequisites
-- [Node.js](https://nodejs.org/) (LTS recommended)
-- [Python](https://www.python.org/) (>= 3.12)
-- [pnpm](https://pnpm.io/installation)
-- [uv](https://github.com/astral-sh/uv)
-
-### 1. Backend Setup
-
-The backend uses `uv` for ultra-fast dependency management.
-
+#### Backend
 ```bash
-# Enter backend directory
 cd backend
-
-# (Optional) Create and activate venv, or simply use uv run
-# uv handles virtual environments automatically
-
-# Ensure environment variables are set
-cp .env.example .env
-# Edit .env and set DASHSCOPE_API_KEY
-
-# Install/Sync dependencies
-uv sync
-
-# Start development server
-# Default port: 8000
+cp .env.example .env  # Configure API keys
+uv sync               # Install dependencies
 uv run uvicorn main:app --reload
 ```
+*Database will be created at `backend/readally.db`.*
 
-Backend API Documentation (after start): `http://localhost:8000/docs`
-
-### 2. Frontend Setup
-
-The frontend uses `pnpm` for dependency management.
-
+#### Frontend
 ```bash
-# Enter frontend directory
 cd frontend
-
-# Ensure environment variables are set
 cp .env.example .env
-
-# Install dependencies
 pnpm install
-
-# Start development server
-# Default port: 3000
 pnpm run dev
 ```
+*Access at `http://localhost:3000`.*
 
-Frontend URL: `http://localhost:3000`
+### 3. Docker Development (Build from Source)
+**Use Case:** Verifying that your changes build correctly in Docker before pushing.
+
+```bash
+cd docker
+# Uses docker-compose.dev.yaml which includes 'build' contexts
+docker compose -f docker-compose.dev.yaml up --build
+```
+
+---
+
+## 📂 Configuration Guide
+
+| Scenario | Config File | Database Location | Important Notes |
+| :--- | :--- | :--- | :--- |
+| **Production** | `docker/docker-compose.yaml` | `./docker/data/readally.db` | Uses `ghcr.io` images. No build required. |
+| **Local Dev** | `backend/.env` | `backend/readally.db` | Manual start. Best for coding. |
+| **Docker Dev** | `docker/docker-compose.dev.yaml` | `./docker/data/readally.db` | Builds from local source. Slower start. |
+
+### Environment Variables
+Check the `.env.example` files in each directory for detailed comments on required variables.
+- `docker/.env.example`: For Docker Compose setups.
+- `backend/.env.example`: For manual backend execution.
+- `frontend/.env.example`: For manual frontend execution.
+
+---
+
+## Tech Stack
+
+### Frontend
+- **Framework**: [Next.js](https://nextjs.org/) (React)
+- **Styling**: [Tailwind CSS](https://tailwindcss.com/)
+- **Package Manager**: [pnpm](https://pnpm.io/)
+- **UI/Tools**: Lucide React, Framer Motion
+
+### Backend
+- **Language**: Python
+- **Framework**: [FastAPI](https://fastapi.tiangolo.com/)
+- **Environment Management**: [uv](https://github.com/astral-sh/uv)
+- **Database**: SQLite / SQLModel
+- **AI/LLM Integration**: DashScope (Qwen), LangChain
 
 ## Directory Structure
-
 ```
 /root/ReadAlly.AI/
 ├── backend/            # Python FastAPI Backend
-│   ├── main.py        # Entry point
-│   ├── pyproject.toml # Dependencies
-│   ├── .venv/         # Virtual Environment (Auto-generated)
-│   └── ...
 ├── frontend/           # Next.js Frontend
-│   ├── src/           # Source code
-│   ├── package.json   # Dependencies
-│   └── ...
-└── README.md          # Project Documentation
+├── docker/             # Docker Configuration (Compose files)
+└── .github/            # CI/CD Workflows
 ```
-
-## Notes
-
-- Ensure the backend service is running before starting the frontend to avoid API errors.
-- On the first run, the backend will automatically generate the SQLite database file.

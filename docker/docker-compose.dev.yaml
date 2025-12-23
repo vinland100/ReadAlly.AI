@@ -2,6 +2,9 @@ version: '3.8'
 
 services:
   backend:
+    build:
+      context: ../backend
+      dockerfile: ../docker/backend.Dockerfile
     image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-vinland100}/readally-backend:latest
     container_name: readally-backend
     restart: always
@@ -16,6 +19,11 @@ services:
       - .env
 
   frontend:
+    build:
+      context: ../frontend
+      dockerfile: ../docker/frontend.Dockerfile
+      args:
+        - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8000}
     image: ghcr.io/${GITHUB_REPOSITORY_OWNER:-vinland100}/readally-frontend:latest
     container_name: readally-frontend
     restart: always

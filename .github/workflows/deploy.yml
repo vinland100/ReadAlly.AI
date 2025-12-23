@@ -81,18 +81,9 @@ jobs:
 
       - name: Prepare Compose File
         run: |
-          # Replace variable in compose file with actual owner name (lowercase)
-          export OWNER=${{ github.repository_owner }}
-          export GITHUB_REPOSITORY_OWNER=${OWNER,,}
-          # We use the single docker-compose.yaml but strip the build section
-          # because the server won't have the source code.
-          # We use a simple grep/sed hack or just envsubst.
-          # Since validation might fail if context is missing, we should ideally strip it.
-          # But for simplicity, we can trust that 'docker compose pull' and 'up' might work if we ignore build.
-          # However, to be safe, let's remove lines starting with 'build:', 'context:', 'dockerfile:', 'args:', or '- NEXT_PUBLIC_'.
-          # A proper parser is better, but sed works for this simple file structure.
           
-          sed -E '/^\s*(build|context|dockerfile|args):/d; /^\s*- NEXT_PUBLIC_/d' docker/docker-compose.yaml > docker-compose.yml.tmp
+          # Copy the production compose file
+          cp docker/docker-compose.yaml docker-compose.yml.tmp
           
           # Fix variable syntax for envsubst
           # envsubst sees ${VAR:-default} as a literal string. We convert it to ${VAR} so envsubst can replace it.
