@@ -13,8 +13,14 @@ from models import Article, Paragraph, DifficultyLevel
 from ai_service import AIService
 
 # China Standard Time
+# China Standard Time
 CN_TZ = timezone(timedelta(hours=8))
-AUDIO_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "static", "audio")
+
+static_dir = os.getenv("STATIC_DIR", "static")
+if not os.path.isabs(static_dir):
+    static_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), static_dir)
+    
+AUDIO_DIR = os.path.join(static_dir, "audio")
 
 # Mapping from Shanbay 'grade_info' or 'sbay_level' to our DifficultyLevel
 GRADE_MAP = {

@@ -143,8 +143,19 @@ def get_paragraph_tts(
     p = session.exec(select(Paragraph).where(Paragraph.content == text)).first()
     
     if p and p.audio_path:
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-        abs_path = os.path.join(base_dir, p.audio_path)
+        static_dir = os.getenv("STATIC_DIR", "static")
+        # Ensure absolute path
+        if not os.path.isabs(static_dir):
+            static_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), static_dir)
+            
+        # Clean relative path from DB (remove 'static/' prefix if present)
+        rel_path = p.audio_path
+        if rel_path.startswith("static/"):
+            rel_path = rel_path[7:]
+        elif rel_path.startswith("/static/"):
+             rel_path = rel_path[8:]
+             
+        abs_path = os.path.join(static_dir, rel_path)
         
         if os.path.exists(abs_path):
             with open(abs_path, "rb") as f:
@@ -165,8 +176,17 @@ def get_tts_by_id(
     if not p.audio_path:
          raise HTTPException(status_code=404, detail="Audio not generated for this paragraph")
 
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    abs_path = os.path.join(base_dir, p.audio_path)
+    static_dir = os.getenv("STATIC_DIR", "static")
+    if not os.path.isabs(static_dir):
+        static_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), static_dir)
+
+    rel_path = p.audio_path
+    if rel_path.startswith("static/"):
+        rel_path = rel_path[7:]
+    elif rel_path.startswith("/static/"):
+         rel_path = rel_path[8:]
+         
+    abs_path = os.path.join(static_dir, rel_path)
     
     if os.path.exists(abs_path):
         with open(abs_path, "rb") as f:
