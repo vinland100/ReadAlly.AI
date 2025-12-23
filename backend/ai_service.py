@@ -229,7 +229,7 @@ class AIService:
             response = dashscope.audio.qwen_tts.SpeechSynthesizer.call(
                 model='qwen3-tts-flash',
                 text=text,
-                voice='Rocky',
+                voice='Jennifer',
                 api_key=os.getenv("DASHSCOPE_API_KEY") 
             )
 
