@@ -141,28 +141,10 @@ def get_paragraph_tts(
     session: Session = Depends(get_session)
 ):
     p = session.exec(select(Paragraph).where(Paragraph.content == text)).first()
-    
-    if p and p.audio_path:
-        static_dir = os.getenv("STATIC_DIR", "static")
-        # Ensure absolute path
-        if not os.path.isabs(static_dir):
-            static_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), static_dir)
-            
-        # Clean relative path from DB (remove 'static/' prefix if present)
-        rel_path = p.audio_path
-        if rel_path.startswith("static/"):
-            rel_path = rel_path[7:]
-        elif rel_path.startswith("/static/"):
-             rel_path = rel_path[8:]
-             
-        abs_path = os.path.join(static_dir, rel_path)
-        
-        if os.path.exists(abs_path):
-            with open(abs_path, "rb") as f:
-                return Response(content=f.read(), media_type="audio/mpeg")
-    
-    # If audio_path is missing or file does not exist, return 404
-    raise HTTPException(status_code=404, detail="Audio file not found. Pre-generation required.")
+    if not p:
+         raise HTTPException(status_code=404, detail="Paragraph not found")
+
+    return _get_or_generate_audio(p, session)
 
 @router.get("/tts/{paragraph_id}")
 def get_tts_by_id(
@@ -173,23 +155,65 @@ def get_tts_by_id(
     if not p:
         raise HTTPException(status_code=404, detail="Paragraph not found")
         
-    if not p.audio_path:
-         raise HTTPException(status_code=404, detail="Audio not generated for this paragraph")
+    return _get_or_generate_audio(p, session)
 
+def _get_or_generate_audio(p: Paragraph, session: Session):
+    """
+    Helper to check if audio exists, and if not, generate it immediately.
+    """
+    # 1. Resolve Static Directory
     static_dir = os.getenv("STATIC_DIR", "static")
     if not os.path.isabs(static_dir):
         static_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), static_dir)
-
-    rel_path = p.audio_path
-    if rel_path.startswith("static/"):
-        rel_path = rel_path[7:]
-    elif rel_path.startswith("/static/"):
-         rel_path = rel_path[8:]
-         
-    abs_path = os.path.join(static_dir, rel_path)
     
-    if os.path.exists(abs_path):
-        with open(abs_path, "rb") as f:
+    # 2. Determine Expected File Path
+    # Naming convention: static/audio/{article_id}/{article_id}_{order_index}.mp3
+    # We match what the crawler does: 
+    #   article_audio_dir = os.path.join(AUDIO_DIR, str(article.id))
+    #   filename = f"{article.id}_{p.order_index}.mp3"
+    
+    audio_relative_dir = os.path.join("audio", str(p.article_id))
+    filename = f"{p.article_id}_{p.order_index}.mp3"
+    
+    # Absolute path for file operations
+    audio_dir_abs = os.path.join(static_dir, audio_relative_dir)
+    audio_file_abs = os.path.join(audio_dir_abs, filename)
+    
+    # DB stored relative path example: static/audio/123/123_1.mp3
+    # We want to be consistent with how we store it.
+    # But wait, the crawler stores "static/audio/..." 
+    # Let's standardize on storing "static/audio/{article_id}/{filename}" for db persistence compatibility
+    
+    # 3. Check if file exists
+    if os.path.exists(audio_file_abs):
+        with open(audio_file_abs, "rb") as f:
             return Response(content=f.read(), media_type="audio/mpeg")
-
-    raise HTTPException(status_code=404, detail="Audio file missing on server")
+            
+    # 4. Not found? GENERATE IT.
+    logger.info(f"Audio missing for paragraph {p.id}. Generating on-demand...")
+    
+    try:
+        audio_bytes = AIService.generate_tts(p.content)
+        if audio_bytes:
+            # Ensure dir exists
+            os.makedirs(audio_dir_abs, exist_ok=True)
+            
+            # Save file
+            with open(audio_file_abs, "wb") as f:
+                f.write(audio_bytes)
+            
+            # Update DB (if path wasn't set or was wrong)
+            # The DB path conventionally includes "static/" prefix in this codebase unfortunately
+            rel_path_for_db = os.path.join("static", "audio", str(p.article_id), filename)
+            p.audio_path = rel_path_for_db
+            session.add(p)
+            session.commit()
+            session.refresh(p)
+            
+            return Response(content=audio_bytes, media_type="audio/mpeg")
+        else:
+            raise HTTPException(status_code=500, detail="Failed to generate audio from AI service")
+            
+    except Exception as e:
+        logger.error(f"On-demand TTS generation failed: {e}")
+        raise HTTPException(status_code=500, detail=f"TTS Generation failed: {str(e)}")
