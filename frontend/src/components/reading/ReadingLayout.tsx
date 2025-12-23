@@ -6,14 +6,14 @@ export default function ReadingLayout({ children }: { children: React.ReactNode 
     const user = useAuthStore(state => state.user);
 
     return (
-        <div className={`font-lexend min-h-screen flex flex-col overflow-x-hidden text-slate-900 selection:bg-[#137fec] selection:text-white bg-[#f8f9fc]`}>
-            <header className="sticky top-0 z-50 w-full border-b border-slate-200 bg-[#f8f9fc]/80 backdrop-blur-md px-6 py-3">
+        <div className={`font-lexend min-h-screen flex flex-col overflow-x-hidden text-slate-900 dark:text-slate-100 selection:bg-[#137fec] selection:text-white bg-[#f8f9fc] dark:bg-[#101622]`}>
+            <header className="sticky top-0 z-50 w-full border-b border-slate-200 dark:border-slate-800 bg-[#f8f9fc]/80 dark:bg-[#101622]/80 backdrop-blur-md px-6 py-3">
                 <div className="max-w-[1200px] mx-auto px-6 h-16 flex items-center justify-between">
                     <Link href="/dashboard" className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity">
                         <div className="size-8 text-[#137fec]">
                             <span className="material-symbols-outlined text-3xl">auto_stories</span>
                         </div>
-                        <h2 className="text-slate-900 text-xl font-bold tracking-tight">ReadAlly.AI</h2>
+                        <h2 className="text-slate-900 dark:text-white text-xl font-bold tracking-tight">ReadAlly.AI</h2>
                     </Link>
                     {/* Progress Bar (Removed) */}
                     <div className="hidden md:flex items-center gap-4 flex-1 justify-center max-w-md">
@@ -23,7 +23,7 @@ export default function ReadingLayout({ children }: { children: React.ReactNode 
                             <span className="material-symbols-outlined text-[18px]">arrow_back</span>
                             <span>Library</span>
                         </Link>
-                        <Link href="/profile" className="bg-center bg-no-repeat bg-cover rounded-full size-9 ring-2 ring-white shadow-sm hover:scale-105 transition-transform" style={{ backgroundImage: `url("https://api.dicebear.com/9.x/adventurer/svg?seed=${user?.avatar_seed || 'Cookie'}")` }}></Link>
+                        <Link href="/profile" className="bg-center bg-no-repeat bg-cover rounded-full size-9 ring-2 ring-white dark:ring-slate-700 shadow-sm hover:scale-105 transition-transform" style={{ backgroundImage: `url("https://api.dicebear.com/9.x/adventurer/svg?seed=${user?.avatar_seed || 'Cookie'}")` }}></Link>
                     </div>
                 </div>
             </header>
@@ -32,7 +32,7 @@ export default function ReadingLayout({ children }: { children: React.ReactNode 
             </main>
             {/* Help Button (Global) */}
             <div className="fixed bottom-8 right-8 z-50">
-                <button className="size-12 rounded-full bg-slate-800 text-white shadow-lg hover:bg-[#137fec] transition-colors flex items-center justify-center">
+                <button className="size-12 rounded-full bg-slate-800 dark:bg-slate-700 text-white shadow-lg hover:bg-[#137fec] dark:hover:bg-[#137fec] transition-colors flex items-center justify-center">
                     <span className="material-symbols-outlined text-[24px]">question_mark</span>
                 </button>
             </div>
