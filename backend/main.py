@@ -17,6 +17,10 @@ import random
 from apscheduler.schedulers.background import BackgroundScheduler
 from crawler.shanbay import fetch_shanbay_articles
 import asyncio
+from log_conf import setup_logging
+
+# Setup Logging with CST
+setup_logging()
 
 # China Standard Time
 CN_TZ = timezone(timedelta(hours=8))

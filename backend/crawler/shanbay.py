@@ -37,7 +37,7 @@ GRADE_MAP = {
     "高阶": DifficultyLevel.ADVANCED
 }
 
-logging.basicConfig(level=logging.INFO)
+# Logging is configured in main.py via log_conf
 logger = logging.getLogger(__name__)
 
 def clean_xml_content(request_xml_text):
