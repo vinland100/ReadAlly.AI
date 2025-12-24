@@ -53,7 +53,7 @@ class AIService:
         4. For 'punctuation' tokens:
            - Set `definition` and `context_meaning` to empty.
         5. Grouping (Crucial) and Group Consistency Rule (CRITICAL):
-           - If a 'normal' OR 'attention' item consists of multiple words (e.g. "turn on", "rip open"), assign a UNIQUE integer `group_id` to ALL tokens in that phrase.
+           - If a 'normal' OR 'attention' item consists of multiple words (e.g. "turn ... on", "rip open"), assign a UNIQUE integer `group_id` to ALL tokens in that phrase.
            - **SPARSE DATA RULE**: 
              - Provide the full `definition` and `context_meaning` ONLY for the **FIRST** token of the group.
              - For **ALL SUBSEQUENT** tokens in the same group, set `definition` and `context_meaning` to **empty string ""**.
@@ -66,55 +66,125 @@ class AIService:
         
         Output STRICTLY valid JSON format:
         [
-            {{
-                "text": "The",
-                "type": "normal",
-                "definition": "定冠词",
-                "context_meaning": "特指前文提过的",
-                "group_id": null
-            }},
-            {{
-                "text": "teacher",
-                "type": "normal",
-                "definition": "老师",
-                "context_meaning": "指代该教育者",
-                "group_id": null
-            }},
-            {{
-                "text": "turned",
-                "type": "attention",
-                "definition": "打开 (turn on)",
-                "context_meaning": "启动电源",
-                "group_id": 1
-            }},
-            {{
-                "text": "the",
-                "type": "normal",
-                "definition": "定冠词",
-                "context_meaning": null,
-                "group_id": null
-            }},
-            {{
-                "text": "computer",
-                "type": "normal",
-                "definition": "电脑",
-                "context_meaning": "指代那台机器",
-                "group_id": null
-            }},
-            {{
-                "text": "on",
-                "type": "attention",
-                "definition": "打开 (turn on)",
-                "context_meaning": "启动电源",
-                "group_id": 1
-            }},
-            {{
-                "text": ".",
-                "type": "punctuation",
-                "definition": "",
-                "context_meaning": "",
-                "group_id": null
-            }}
+          {{
+            "text": "The",
+            "type": "normal",
+            "definition": "这",
+            "context_meaning": "定冠词，特指CEO",
+            "group_id": null
+          }},
+          {{
+            "text": "CEO",
+            "type": "attention",
+            "definition": "首席执行官",
+            "context_meaning": "公司的最高行政负责人",
+            "group_id": null
+          }},
+          {{
+            "text": "decided",
+            "type": "normal",
+            "definition": "决定 (decide to)",
+            "context_meaning": "下定决心做某事",
+            "group_id": 1
+          }},
+          {{
+            "text": "to",
+            "type": "normal",
+            "definition": "",
+            "context_meaning": "",
+            "group_id": 1
+          }},
+          {{
+            "text": "take",
+            "type": "attention",
+            "definition": "承担/接手 (take on)",
+            "context_meaning": "接受一项艰巨的任务或责任",
+            "group_id": 2
+          }},
+          {{
+            "text": "the",
+            "type": "normal",
+            "definition": "这个",
+            "context_meaning": "特指那个项目",
+            "group_id": null
+          }},
+          {{
+            "text": "extremely",
+            "type": "attention",
+            "definition": "极端地",
+            "context_meaning": "程度副词，修饰冒险程度",
+            "group_id": null
+          }},
+          {{
+            "text": "risky",
+            "type": "attention",
+            "definition": "冒险的",
+            "context_meaning": "形容项目具有高风险",
+            "group_id": null
+          }},
+          {{
+            "text": "project",
+            "type": "normal",
+            "definition": "项目",
+            "context_meaning": "指代CEO接手的任务",
+            "group_id": null
+          }},
+          {{
+            "text": "on",
+            "type": "attention",
+            "definition": "",
+            "context_meaning": "",
+            "group_id": 2
+          }},
+          {{
+            "text": "at",
+            "type": "attention",
+            "definition": "归根结底；最终 (at the end of the day)",
+            "context_meaning": "用于总结陈述，指最终考虑的结果",
+            "group_id": 3
+          }},
+          {{
+            "text": "the",
+            "type": "attention",
+            "definition": "",
+            "context_meaning": "",
+            "group_id": 3
+          }},
+          {{
+            "text": "end",
+            "type": "attention",
+            "definition": "",
+            "context_meaning": "",
+            "group_id": 3
+          }},
+          {{
+            "text": "of",
+            "type": "attention",
+            "definition": "",
+            "context_meaning": "",
+            "group_id": 3
+          }},
+          {{
+            "text": "the",
+            "type": "attention",
+            "definition": "",
+            "context_meaning": "",
+            "group_id": 3
+          }},
+          {{
+            "text": "day",
+            "type": "attention",
+            "definition": "",
+            "context_meaning": "",
+            "group_id": 3
+          }},
+          {{
+            "text": ".",
+            "type": "punctuation",
+            "definition": "",
+            "context_meaning": "",
+            "group_id": null
+          }}
         ]
         
         Text:
