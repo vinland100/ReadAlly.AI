@@ -21,7 +21,7 @@ interface SyntaxResult {
 // Token Interface from Backend
 interface Token {
     text: string;
-    type: 'normal' | 'idiom' | 'phrasal_verb' | 'fixed_expression' | 'slang';
+    type: 'normal' | 'attention' | 'punctuation';
     definition: string;
     context_meaning?: string;
     group_id?: number | null;
@@ -102,12 +102,38 @@ export default function ParagraphBlock({ id, content, image_url, audio_path, ana
             return <p className="text-lg md:text-xl text-slate-800 dark:text-slate-200 leading-[1.8] font-normal tracking-wide pr-10 xl:pr-0">{content}</p>;
         }
 
+        // Color palette for attention groups
+        const groupColors = [
+            "border-blue-400 dark:border-blue-400",
+            "border-purple-400 dark:border-purple-400",
+            "border-emerald-400 dark:border-emerald-400",
+            "border-orange-400 dark:border-orange-400",
+            "border-pink-400 dark:border-pink-400",
+            "border-cyan-400 dark:border-cyan-400",
+        ];
+
         return (
             <p className="text-lg md:text-xl text-slate-800 dark:text-slate-200 leading-[1.8] font-normal tracking-wide pr-10 xl:pr-0">
                 {analysis.map((token, index) => {
                     const isGrouped = token.group_id !== null && token.group_id !== undefined;
                     const isHovered = isGrouped && token.group_id === hoveredGroupId;
-                    const isTarget = token.type !== 'normal';
+
+                    // Only 'attention' type gets special visual treatment (underline)
+                    const isAttention = token.type === 'attention';
+
+                    // Punctuation is unclickable
+                    const isPunctuation = token.type === 'punctuation';
+                    const isClickable = !isPunctuation;
+
+                    // Group color logic - simplified to cycle through colors based on group_id
+                    let groupCtxColor = "";
+                    if (isAttention && isGrouped) {
+                        const colorIdx = (token.group_id! % groupColors.length);
+                        groupCtxColor = groupColors[colorIdx];
+                    } else if (isAttention && !isGrouped) {
+                        // Default color for single attention words
+                        groupCtxColor = "border-blue-400 dark:border-blue-400";
+                    }
 
                     // Determine if we need a trailing space
                     // We add a space if:
@@ -131,27 +157,28 @@ export default function ParagraphBlock({ id, content, image_url, audio_path, ana
                         <React.Fragment key={index}>
                             <span
                                 onClick={(e) => {
+                                    if (!isClickable) return;
                                     e.stopPropagation();
                                     setSelectedToken(token);
                                 }}
                                 onMouseEnter={() => {
-                                    if (isGrouped) setHoveredGroupId(token.group_id!);
+                                    if (isClickable && isGrouped) setHoveredGroupId(token.group_id!);
                                 }}
                                 onMouseLeave={() => {
-                                    if (isGrouped) setHoveredGroupId(null);
+                                    if (isClickable && isGrouped) setHoveredGroupId(null);
                                 }}
                                 className={clsx(
-                                    "cursor-pointer transition-colors duration-200 rounded-sm px-[1px]",
-                                    // Base hover for all words
+                                    "rounded-sm px-[1px]",
+                                    isClickable ? "cursor-pointer transition-colors duration-200" : "cursor-default",
+                                    // Base hover for all words if clickable
+                                    isClickable && "hover:bg-slate-200 dark:hover:bg-slate-700",
 
-                                    "hover:bg-slate-200 dark:hover:bg-slate-700",
-                                    // Highlight style for identified phrases
-                                    isTarget && "border-b-[1.5px] border-dotted",
-                                    isTarget && token.type === 'idiom' && "border-blue-400 dark:border-blue-400",
-                                    isTarget && token.type === 'phrasal_verb' && "border-purple-400 dark:border-purple-400",
-                                    isTarget && token.type === 'fixed_expression' && "border-emerald-400 dark:border-emerald-400",
-                                    // Group Hover Effect
-                                    isHovered && "bg-slate-200 dark:bg-slate-700"
+                                    // Highlight style for ATTENTION items only
+                                    isAttention && "border-b-[1.5px] border-dotted",
+                                    isAttention && groupCtxColor,
+
+                                    // Group Hover Effect (for clickable grouped items)
+                                    isClickable && isHovered && "bg-slate-200 dark:bg-slate-700"
                                 )}
                             >
                                 {token.text}
@@ -395,21 +422,10 @@ export default function ParagraphBlock({ id, content, image_url, audio_path, ana
                                                     return selectedToken.text;
                                                 })()}
                                             </h3>
-                                            {selectedToken?.type !== 'normal' && (
+                                            {selectedToken?.type === 'attention' && (
                                                 <div className="flex items-center gap-2 mt-1">
                                                     <span className="px-2 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">
-                                                        {selectedToken?.type?.replace('_', ' ')}
-                                                    </span>
-                                                    <span className="text-sm text-slate-500 dark:text-slate-400 font-medium">
-                                                        {(() => {
-                                                            switch (selectedToken?.type) {
-                                                                case 'idiom': return '习语';
-                                                                case 'phrasal_verb': return '短语动词';
-                                                                case 'fixed_expression': return '固定搭配';
-                                                                case 'slang': return '俚语';
-                                                                default: return '';
-                                                            }
-                                                        })()}
+                                                        Attention
                                                     </span>
                                                 </div>
                                             )}

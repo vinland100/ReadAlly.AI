@@ -18,35 +18,7 @@ logger = logging.getLogger(__name__)
 dashscope.api_key = os.getenv("DASHSCOPE_API_KEY")
 
 class AIService:
-    @staticmethod
-    def classify_difficulty(text: str) -> str:
-        """Classifies the reading level of the text."""
-        prompt = f"""
-        Analyze the following English text and classify its difficulty level into one of these categories:
-        High School, CET-4, CET-6, IELTS, TEM-8.
 
-        Only output the category name.
-
-        Text snippet:
-        {text[:1000]}...
-        """
-
-        try:
-            response = Generation.call(
-                model="qwen-flash",
-                messages=[{'role': 'system', 'content': 'You are a helpful language assessment expert.'},
-                          {'role': 'user', 'content': prompt}],
-                result_format='message'
-            )
-
-            if response.status_code == HTTPStatus.OK:
-                return response.output.choices[0].message.content.strip()
-            else:
-                logger.error(f"AI Classification Error: {response.code} - {response.message}")
-                return "Unknown"
-        except Exception as e:
-            logger.error(f"AI Classification Exception: {e}")
-            return "Unknown"
 
     @staticmethod
     def analyze_vocabulary(text: str, level: str):
@@ -70,52 +42,80 @@ class AIService:
         Goal: Analyze the following text {level_instruction}
 
         Task:
-        1. Tokenize the entire text into a linear list of tokens (words and punctuation). 
+        1. Tokenize the entire text into a linear list of tokens (words and punctuation).
         2. Assign a 'type' to each token:
-           - 'normal': Standard words or punctuation.
-           - 'idiom': Part of an idiom.
-           - 'phrasal_verb': Part of a phrasal verb.
-           - 'fixed_expression': Part of a fixed expression or collocation.
-        3. For 'normal' tokens:
-           - Provide a concise Chinese definition.
-        4. For 'idiom'/'phrasal_verb'/'fixed_expression' (target items):
-           - These items may be multi-word or non-contiguous (e.g. "turn" ... "on").
-           - Assign a UNIQUE integer `group_id` to ALL tokens belonging to the SAME target item.
-           - Provide the MEANING of the WHOLE phrase in `definition`.
+           - 'normal': clearly understood, simple words/Phrase/phrases/idioms/fixed expressions for this level.
+           - 'attention': difficult, new, or important words/Phrase/phrases/idioms/fixed expressions for this level (Target Items).
+           - 'punctuation': Punctuation marks (.,?! ")""——"etc).
+        3. For 'normal' AND 'attention' tokens:
+           - Provide a concise Chinese definition (`definition`).
            - Provide the `context_meaning` (meaning in this specific sentence).
-        5. 'normal' tokens should NOT have a `group_id` (or use null).
-
+        4. For 'punctuation' tokens:
+           - Set `definition` and `context_meaning` to empty.
+        5. Grouping (Crucial):
+           - If a 'normal' OR 'attention' item consists of multiple words (e.g. "sit down", "turn ... on", "idioms"), assign a UNIQUE integer `group_id` to ALL tokens in that phrase.
+           - This applies to contiguous phrases AND non-contiguous phrases (e.g., "turn the light on" -> "turn" and "on" share group_id).
+           - Single words should have `group_id`: null.
+        6. Output Requirement:
+           - Ensure every token from the source text is included in order.
+        
         Output STRICTLY valid JSON format:
         [
             {{
                 "text": "The",
                 "type": "normal",
                 "definition": "定冠词",
+                "context_meaning": "特指前文提过的",
+                "group_id": null
+            }},
+            {{
+                "text": "teacher",
+                "type": "normal",
+                "definition": "老师",
+                "context_meaning": "指代该教育者",
+                "group_id": null
+            }},
+            {{
+                "text": "turned",
+                "type": "attention",
+                "definition": "打开 (turn on)",
+                "context_meaning": "启动电源",
+                "group_id": 1
+            }},
+            {{
+                "text": "the",
+                "type": "normal",
+                "definition": "定冠词",
                 "context_meaning": null,
                 "group_id": null
             }},
             {{
-                "text": "turn",
-                "type": "phrasal_verb",
-                "definition": "打开 (turn on)",
-                "context_meaning": "启动电源",
-                "group_id": 1
-            }},
-            {{
-                "text": "the", 
-                ...
+                "text": "computer",
+                "type": "normal",
+                "definition": "电脑",
+                "context_meaning": "指代那台机器",
+                "group_id": null
             }},
             {{
                 "text": "on",
-                "type": "phrasal_verb",
+                "type": "attention",
                 "definition": "打开 (turn on)",
                 "context_meaning": "启动电源",
                 "group_id": 1
+            }},
+            {{
+                "text": ".",
+                "type": "punctuation",
+                "definition": "",
+                "context_meaning": "",
+                "group_id": null
             }}
         ]
-
+        
         Text:
         {text}
+        
+        JSON about the text:
         """
 
         try:

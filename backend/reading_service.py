@@ -118,7 +118,15 @@ def analyze_translation(
         return {"translation": json.loads(p.translation)}
     
     # Fallback to on-demand if missing (should not happen in eager mode)
-    return {"translation": AIService.translate_paragraph(paragraph_text)}
+    translation = AIService.translate_paragraph(paragraph_text)
+    
+    if p and translation and "translation" in translation and translation["translation"] != "Translation failed.":
+        p.translation = json.dumps(translation, ensure_ascii=False)
+        session.add(p)
+        session.commit()
+        session.refresh(p)
+    
+    return {"translation": translation}
 
 @router.post("/analyze/syntax")
 def analyze_syntax(
@@ -130,7 +138,36 @@ def analyze_syntax(
     if p and p.syntax:
         return {"syntax": json.loads(p.syntax)}
         
-    return {"syntax": AIService.analyze_syntax(paragraph_text)}
+    syntax = AIService.analyze_syntax(paragraph_text)
+    
+    if p and syntax and "structures" in syntax:
+        p.syntax = json.dumps(syntax, ensure_ascii=False)
+        session.add(p)
+        session.commit()
+        session.refresh(p)
+
+    return {"syntax": syntax}
+
+@router.post("/analyze/vocabulary")
+def analyze_vocabulary(
+    paragraph_text: str,
+    level: str = "Advanced", # Default, ideally passed from frontend or article context
+    session: Session = Depends(get_session)
+):
+    p = session.exec(select(Paragraph).where(Paragraph.content == paragraph_text)).first()
+    
+    if p and p.analysis:
+        return json.loads(p.analysis)
+        
+    analysis = AIService.analyze_vocabulary(paragraph_text, level)
+    
+    if p and analysis:
+        p.analysis = json.dumps(analysis, ensure_ascii=False)
+        session.add(p)
+        session.commit()
+        session.refresh(p)
+
+    return analysis
 
 import json
 import os
