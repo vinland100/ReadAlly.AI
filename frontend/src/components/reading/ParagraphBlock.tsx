@@ -112,14 +112,21 @@ export default function ParagraphBlock({ id, content, image_url, audio_path, ana
             "border-cyan-400 dark:border-cyan-400",
         ];
 
+        // Pre-calculate which groups should be treated as 'attention' items
+        const attentionGroupIds = new Set(
+            analysis
+                .filter(t => t.type === 'attention' && t.group_id !== null && t.group_id !== undefined)
+                .map(t => t.group_id!)
+        );
+
         return (
             <p className="text-lg md:text-xl text-slate-800 dark:text-slate-200 leading-[1.8] font-normal tracking-wide pr-10 xl:pr-0">
                 {analysis.map((token, index) => {
                     const isGrouped = token.group_id !== null && token.group_id !== undefined;
                     const isHovered = isGrouped && token.group_id === hoveredGroupId;
 
-                    // Only 'attention' type gets special visual treatment (underline)
-                    const isAttention = token.type === 'attention';
+                    // A token is 'attention' if it is explicitly marked, OR if it's part of an attention group
+                    const isAttention = token.type === 'attention' || (isGrouped && attentionGroupIds.has(token.group_id!));
 
                     // Punctuation is unclickable
                     const isPunctuation = token.type === 'punctuation';

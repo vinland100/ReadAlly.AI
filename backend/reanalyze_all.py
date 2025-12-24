@@ -70,9 +70,6 @@ def reanalyze_all():
             session.commit()
             logger.info(f"   ✅ Updated {updates_count}/{len(paragraphs)} paragraphs.")
             
-            # Optional: Sleep briefly between articles
-            time.sleep(1)
-
     logger.info("\n🎉 Global Re-analysis Complete!")
 
 if __name__ == "__main__":

@@ -28,14 +28,16 @@ class AIService:
         """
 
         level_instruction = ""
-        if level == "High School":
-            level_instruction = "Target: High School level (CEFR B2+)."
-        elif level == "CET-4":
-             level_instruction = "Target: CET-4 level (CEFR C1)."
-        elif level == "IELTS":
-             level_instruction = "Target: IELTS Band 7+."
+        if level == DifficultyLevel.INITIAL.value:
+            level_instruction = "Target: High School level (CEFR B1)."
+        elif level == DifficultyLevel.INTERMEDIATE.value:
+             level_instruction = "Target: CET-4 level (CEFR B2)."
+        elif level == DifficultyLevel.UPPER_INTERMEDIATE.value:
+             level_instruction = "Target: CET-6 / Graduate Entrance Exam level (CEFR C1)."
+        elif level == DifficultyLevel.ADVANCED.value:
+             level_instruction = "Target: IELTS 7+ / TOEFL / Professional level (CEFR C1/C2)."
         else:
-             level_instruction = "Target: Advanced learner."
+             level_instruction = "Target: General English learner."
 
         prompt = f"""
         You are an expert linguist and English tutor.
@@ -54,6 +56,7 @@ class AIService:
            - Set `definition` and `context_meaning` to empty.
         5. Grouping (Crucial) and Group Consistency Rule (CRITICAL):
            - If a 'normal' OR 'attention' item consists of multiple words (e.g. "turn ... on", "rip open"), assign a UNIQUE integer `group_id` to ALL tokens in that phrase.
+           - **Consistency Rule**: ALL tokens in the same group MUST have the SAME `type` (either all 'normal' or all 'attention').
            - **SPARSE DATA RULE**: 
              - Provide the full `definition` and `context_meaning` ONLY for the **FIRST** token of the group.
              - For **ALL SUBSEQUENT** tokens in the same group, set `definition` and `context_meaning` to **empty string ""**.
@@ -195,7 +198,7 @@ class AIService:
 
         try:
             response = Generation.call(
-                model="qwen-flash",
+                model="qwen3-next-80b-a3b-instruct",
                 messages=[{'role': 'system', 'content': 'You are a strict JSON outputting AI assistant.'},
                           {'role': 'user', 'content': prompt}],
                 result_format='message'
@@ -235,7 +238,7 @@ class AIService:
         """
         try:
             response = Generation.call(
-                model="qwen-flash",
+                model="qwen3-next-80b-a3b-instruct",
                 messages=[{'role': 'system', 'content': 'You are a professional translator. Output only JSON.'},
                           {'role': 'user', 'content': prompt}],
                 result_format='message'
@@ -278,7 +281,7 @@ class AIService:
         """
         try:
             response = Generation.call(
-                model="qwen-flash",
+                model="qwen3-next-80b-a3b-instruct",
                 messages=[{'role': 'system', 'content': 'You are a grammar expert. Output only JSON.'},
                           {'role': 'user', 'content': prompt}],
                 result_format='message'
