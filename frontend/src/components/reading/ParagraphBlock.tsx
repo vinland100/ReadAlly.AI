@@ -159,7 +159,18 @@ export default function ParagraphBlock({ id, content, image_url, audio_path, ana
                                 onClick={(e) => {
                                     if (!isClickable) return;
                                     e.stopPropagation();
-                                    setSelectedToken(token);
+
+                                    // If grouped, always select the FIRST token of the group (Leader)
+                                    // This ensures we get the definition/context even if the specific clicked token is empty (sparse storage)
+                                    let tokenToSelect = token;
+                                    if (isGrouped && analysis) {
+                                        const groupLeader = analysis.find(t => t.group_id === token.group_id);
+                                        if (groupLeader) {
+                                            tokenToSelect = groupLeader;
+                                        }
+                                    }
+
+                                    setSelectedToken(tokenToSelect);
                                 }}
                                 onMouseEnter={() => {
                                     if (isClickable && isGrouped) setHoveredGroupId(token.group_id!);

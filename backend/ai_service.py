@@ -52,10 +52,15 @@ class AIService:
            - Provide the `context_meaning` (meaning in this specific sentence).
         4. For 'punctuation' tokens:
            - Set `definition` and `context_meaning` to empty.
-        5. Grouping (Crucial):
-           - If a 'normal' OR 'attention' item consists of multiple words (e.g. "sit down", "turn ... on", "idioms"), assign a UNIQUE integer `group_id` to ALL tokens in that phrase.
-           - This applies to contiguous phrases AND non-contiguous phrases (e.g., "turn the light on" -> "turn" and "on" share group_id).
-           - Single words should have `group_id`: null.
+        5. Grouping (Crucial) and Group Consistency Rule (CRITICAL):
+           - If a 'normal' OR 'attention' item consists of multiple words (e.g. "turn on", "rip open"), assign a UNIQUE integer `group_id` to ALL tokens in that phrase.
+           - **SPARSE DATA RULE**: 
+             - Provide the full `definition` and `context_meaning` ONLY for the **FIRST** token of the group.
+             - For **ALL SUBSEQUENT** tokens in the same group, set `definition` and `context_meaning` to **empty string ""**.
+           - The meaning provided in the first token MUST describe the **WHOLE PHRASE**.
+             - Example: "rip open". 
+               - Token 1 "rip": type="attention", group_id=1, definition="迅速撕开", context_meaning="喻指..."
+               - Token 2 "open": type="attention", group_id=1, definition="", context_meaning=""
         6. Output Requirement:
            - Ensure every token from the source text is included in order.
         

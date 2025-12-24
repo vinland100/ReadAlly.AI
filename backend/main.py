@@ -63,8 +63,6 @@ def on_startup():
     # Schedule Shanbay crawler at 10:00 AM daily
     scheduler.add_job(fetch_shanbay_articles, 'cron', hour=10, minute=0, timezone=CN_TZ)
     scheduler.start()
-    scheduler.add_job(fetch_shanbay_articles, 'cron', hour=10, minute=0, timezone=CN_TZ)
-    scheduler.start()
     print("Scheduler started. Shanbay crawler set for 10:00 AM.")
 
 @app.post("/register", response_model=Token)
