@@ -40,146 +40,172 @@ class AIService:
              level_instruction = "Target: General English learner."
 
         prompt = f"""
-        You are an expert linguist and English tutor.
-        Goal: Analyze the following text {level_instruction}
+        Role: Expert linguist and English tutor.
 
-        Task:
-        1. Tokenize the entire text into a linear list of tokens (words and punctuation).
-        2. Assign a 'type' to each token:
-           - 'normal': clearly understood, simple words/Phrase/phrases/idioms/fixed expressions for this level.
-           - 'attention': difficult, new, or important words/Phrase/phrases/idioms/fixed expressions for this level (Target Items).
-           - 'punctuation': Punctuation marks (.,?! ")""——"etc).
-        3. For 'normal' AND 'attention' tokens:
-           - Provide a concise Chinese definition (`definition`).
-           - Provide the `context_meaning` (meaning in this specific sentence).
-        4. For 'punctuation' tokens:
-           - Set `definition` and `context_meaning` to empty.
-        5. Grouping (Crucial) and Group Consistency Rule (CRITICAL):
-           - If a 'normal' OR 'attention' item consists of multiple words (e.g. "turn ... on", "rip open"), assign a UNIQUE integer `group_id` to ALL tokens in that phrase.
-           - **Consistency Rule**: ALL tokens in the same group MUST have the SAME `type` (either all 'normal' or all 'attention').
-           - **SPARSE DATA RULE**: 
-             - Provide the full `definition` and `context_meaning` ONLY for the **FIRST** token of the group.
-             - For **ALL SUBSEQUENT** tokens in the same group, set `definition` and `context_meaning` to **empty string ""**.
-           - The meaning provided in the first token MUST describe the **WHOLE PHRASE**.
-             - Example: "rip open". 
-               - Token 1 "rip": type="attention", group_id=1, definition="迅速撕开", context_meaning="喻指..."
-               - Token 2 "open": type="attention", group_id=1, definition="", context_meaning=""
-        6. Output Requirement:
-           - Ensure every token from the source text is included in order.
-        
-        Output STRICTLY valid JSON format:
+        Goal:
+        Analyze the following text using the vocabulary and comprehension standards of a learner currently studying at {level_instruction}.
+
+
+        TASK:
+        1. Tokenize the entire text into a linear sequence of tokens (words + punctuation), preserving order.
+        2. For each token, output an object with:
+           - text
+           - type: "normal" | "attention" | "punctuation"
+           - definition (Chinese)
+           - context_meaning (Chinese, sentence-specific)
+           - group_id (integer or null)
+
+        TYPE RULES:
+        - "normal": easy/common words or expressions for this level.
+        - "attention": difficult, new, or key words or expressions for this level.
+        - "punctuation": punctuation symbols only.
+
+        PUNCTUATION RULE:
+        - If type == "punctuation":
+          - definition = ""
+          - context_meaning = ""
+          - group_id = null
+
+        GROUPING RULES (CRITICAL):
+        - If a word or expression is a multi-word phrase (phrasal verb, idiom, fixed expression etc...):
+          - Assign a UNIQUE integer group_id to ALL tokens in that phrase.
+          - ALL tokens in the same group MUST share EXACTLY the SAME type:
+            - either ALL "normal" or ALL "attention"
+            - mixing "normal" and "attention" within a group is STRICTLY FORBIDDEN
+        - SPARSE DATA RULE (CRITICAL):
+          - Exactly the FIRST token of the group may carry semantic content.
+          - The definition and context_meaning on the FIRST token of the group MUST represent the FULL meaning of the ENTIRE group.
+          - ALL remaining tokens in the same group MUST be:
+            - definition = ""
+            - context_meaning = ""
+
+
+        OUTPUT RULES:
+        - Include EVERY token from the source text.
+        - Preserve original token order.
+        - Output MUST be STRICTLY valid JSON.
+        - Output ONLY the JSON array, no explanations.
+
+        An example:
         [
           {{
-            "text": "The",
+            "text": "She",
             "type": "normal",
-            "definition": "这",
-            "context_meaning": "定冠词，特指CEO",
+            "definition": "她",
+            "context_meaning": "指代句中的女性主体",
             "group_id": null
           }},
           {{
-            "text": "CEO",
+            "text": "not",
             "type": "attention",
-            "definition": "首席执行官",
-            "context_meaning": "公司的最高行政负责人",
-            "group_id": null
-          }},
-          {{
-            "text": "decided",
-            "type": "normal",
-            "definition": "决定 (decide to)",
-            "context_meaning": "下定决心做某事",
+            "definition": "不仅……而且……（not only ... but also ...）",
+            "context_meaning": "构成强调并列结构的一部分",
             "group_id": 1
           }},
           {{
-            "text": "to",
-            "type": "normal",
+            "text": "only",
+            "type": "attention",
             "definition": "",
             "context_meaning": "",
             "group_id": 1
           }},
           {{
-            "text": "take",
+            "text": "quickly",
+            "type": "normal",
+            "definition": "迅速地",
+            "context_meaning": "修饰动作发生的速度",
+            "group_id": null
+          }},
+          {{
+            "text": "turned",
             "type": "attention",
-            "definition": "承担/接手 (take on)",
-            "context_meaning": "接受一项艰巨的任务或责任",
+            "definition": "拒绝（turn ... down）",
+            "context_meaning": "表示拒绝某个提议",
             "group_id": 2
           }},
           {{
             "text": "the",
             "type": "normal",
             "definition": "这个",
-            "context_meaning": "特指那个项目",
+            "context_meaning": "特指下文提到的提议",
             "group_id": null
           }},
           {{
-            "text": "extremely",
-            "type": "attention",
-            "definition": "极端地",
-            "context_meaning": "程度副词，修饰冒险程度",
-            "group_id": null
-          }},
-          {{
-            "text": "risky",
-            "type": "attention",
-            "definition": "冒险的",
-            "context_meaning": "形容项目具有高风险",
-            "group_id": null
-          }},
-          {{
-            "text": "project",
+            "text": "offer",
             "type": "normal",
-            "definition": "项目",
-            "context_meaning": "指代CEO接手的任务",
+            "definition": "提议；报价",
+            "context_meaning": "指被拒绝的提议",
             "group_id": null
           }},
           {{
-            "text": "on",
+            "text": "down",
             "type": "attention",
             "definition": "",
             "context_meaning": "",
             "group_id": 2
           }},
           {{
-            "text": "at",
+            "text": ",",
+            "type": "punctuation",
+            "definition": "",
+            "context_meaning": "",
+            "group_id": null
+          }},
+          {{
+            "text": "but",
             "type": "attention",
-            "definition": "归根结底；最终 (at the end of the day)",
-            "context_meaning": "用于总结陈述，指最终考虑的结果",
+            "definition": "",
+            "context_meaning": "",
+            "group_id": 1
+          }},
+          {{
+            "text": "also",
+            "type": "attention",
+            "definition": "",
+            "context_meaning": "",
+            "group_id": 1
+          }},
+          {{
+            "text": "flat",
+            "type": "attention",
+            "definition": "断然地；毫不留情地（flat out）",
+            "context_meaning": "强调拒绝的坚决程度",
             "group_id": 3
           }},
           {{
-            "text": "the",
+            "text": "out",
             "type": "attention",
             "definition": "",
             "context_meaning": "",
             "group_id": 3
           }},
           {{
-            "text": "end",
+            "text": "refused",
             "type": "attention",
-            "definition": "",
-            "context_meaning": "",
-            "group_id": 3
+            "definition": "拒绝",
+            "context_meaning": "明确表示不愿意做某事",
+            "group_id": null
           }},
           {{
-            "text": "of",
-            "type": "attention",
-            "definition": "",
-            "context_meaning": "",
-            "group_id": 3
+            "text": "to",
+            "type": "normal",
+            "definition": "去；做（不定式标记）",
+            "context_meaning": "引出后续动作",
+            "group_id": null
           }},
           {{
-            "text": "the",
-            "type": "attention",
-            "definition": "",
-            "context_meaning": "",
-            "group_id": 3
+            "text": "explain",
+            "type": "normal",
+            "definition": "解释",
+            "context_meaning": "说明原因或细节",
+            "group_id": null
           }},
           {{
-            "text": "day",
-            "type": "attention",
-            "definition": "",
-            "context_meaning": "",
-            "group_id": 3
+            "text": "why",
+            "type": "normal",
+            "definition": "为什么",
+            "context_meaning": "引导原因从句",
+            "group_id": null
           }},
           {{
             "text": ".",
@@ -189,10 +215,10 @@ class AIService:
             "group_id": null
           }}
         ]
-        
-        Text:
+
+        Target Text:
         {text}
-        
+
         JSON about the text:
         """
 
