@@ -1,1 +1,31 @@
-<svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 -960 960 960" width="24" fill="#135bec"><path d="M560-324v-444q0-28 22.5-43 t47.5-6q45 15 90 28.5t90 28.5v470q-47-19-92.5-34.5T625-356q-20-4-36.5 6.5T560-324Zm-160 0q-12-16-28.5-26.5T335-356q-46 11-91.5 26.5T151-295v-470q45-15 90-28.5T331-822q25-9 47.5 6t22.5 43v449Zm80 204q-52-44-118-69.5T226-815q-59 0-97.5 29.5T80-705v535q0 18 12 28.5t28 6.5q13-3 25-10t23-14q16-8 37-14t41-6q61 0 119 19.5t115 59.5q57-40 115-59.5T714-180q20 0 41 6t37 14q11 7 23 14t25 10q16 4 28-6.5t12-28.5v-535q-10-52-48.5-81.5T734-815q-67 0-133 25.5T480-120Z"/></svg>
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="grad_left" x1="14" y1="24" x2="64" y2="104" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#00F2FE" />
+      <stop offset="100%" stop-color="#0077FF" />
+    </linearGradient>
+    <linearGradient id="grad_right" x1="114" y1="24" x2="64" y2="104" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#7000FF" />
+      <stop offset="100%" stop-color="#0077FF" />
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="2" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Left Bottom Page -->
+  <path d="M64 110C40 100 14 105 14 105V35C14 35 40 30 64 40V110Z" fill="url(#grad_left)" opacity="0.6" />
+  
+  <!-- Right Bottom Page -->
+  <path d="M64 110C88 100 114 105 114 105V35C114 35 88 30 64 40V110Z" fill="url(#grad_right)" opacity="0.6" />
+
+  <!-- Left Top Intertwined Page -->
+  <path d="M64 110C50 90 40 85 40 64C40 43 50 38 64 18V45C58 50 54 56 54 64C54 72 58 78 64 83V110Z" fill="url(#grad_left)" />
+
+  <!-- Right Top Intertwined Page -->
+  <path d="M64 110C78 90 88 85 88 64C88 43 78 38 64 18V45C70 50 74 56 74 64C74 72 70 78 64 83V110Z" fill="url(#grad_right)" />
+
+  <!-- The Spark / Star in the center -->
+  <path d="M64 48L68 64L64 80L60 64L64 48Z" fill="white" filter="url(#glow)" />
+</svg>

@@ -5,6 +5,7 @@ import useTheme from '@/lib/useTheme';
 import api from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store';
+import Logo from '@/components/common/Logo';
 
 export default function DashboardScreen() {
     useTheme('light');
@@ -73,9 +74,7 @@ export default function DashboardScreen() {
         <div className="font-lexend bg-[#f8f9fc] min-h-screen flex flex-col overflow-x-hidden">
             <header className="sticky top-0 z-50 flex items-center justify-between border-b border-slate-200 bg-[#f8f9fc]/80 backdrop-blur-md px-6 py-3 lg:px-10">
                 <Link href="/dashboard" className="flex items-center gap-4 hover:opacity-80 transition-opacity">
-                    <div className="size-8 text-[#135bec]">
-                        <span className="material-symbols-outlined text-3xl">auto_stories</span>
-                    </div>
+                    <Logo size={32} />
                     <h2 className="text-slate-900 text-xl font-bold leading-tight tracking-[-0.015em]">ReadAlly.AI</h2>
                 </Link>
                 <div className="flex flex-1 justify-end gap-6 items-center">

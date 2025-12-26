@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import useTheme from '@/lib/useTheme';
 import api from '@/lib/api';
 import { useAuthStore } from '@/lib/store';
+import Logo from '@/components/common/Logo';
 
 export default function LoginScreen() {
     useTheme('light');
@@ -50,9 +51,7 @@ export default function LoginScreen() {
             {/* Header */}
             <header className="absolute top-0 left-0 w-full px-6 py-6 flex justify-between items-center z-10">
                 <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 flex items-center justify-center bg-[#135bec] rounded-lg text-white">
-                        <span className="material-symbols-outlined text-[20px]">auto_stories</span>
-                    </div>
+                    <Logo size={28} />
                     <h1 className="text-xl font-bold tracking-tight text-[#0d121b]">ReadAlly.AI</h1>
                 </div>
             </header>

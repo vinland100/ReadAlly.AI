@@ -1,6 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { useAuthStore } from '@/lib/store';
+import Logo from '@/components/common/Logo';
 
 export default function ReadingLayout({ children }: { children: React.ReactNode }) {
     const user = useAuthStore(state => state.user);
@@ -10,9 +11,7 @@ export default function ReadingLayout({ children }: { children: React.ReactNode 
             <header className="sticky top-0 z-50 w-full border-b border-slate-200 dark:border-slate-800 bg-[#f8f9fc]/80 dark:bg-[#101622]/80 backdrop-blur-md px-6 py-3">
                 <div className="max-w-[1200px] mx-auto px-6 h-16 flex items-center justify-between">
                     <Link href="/dashboard" className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity">
-                        <div className="size-8 text-[#137fec]">
-                            <span className="material-symbols-outlined text-3xl">auto_stories</span>
-                        </div>
+                        <Logo size={32} />
                         <h2 className="text-slate-900 dark:text-white text-xl font-bold tracking-tight">ReadAlly.AI</h2>
                     </Link>
                     {/* Progress Bar (Removed) */}

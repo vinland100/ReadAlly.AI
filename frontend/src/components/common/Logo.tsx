@@ -1,0 +1,51 @@
+import React from 'react';
+
+interface LogoProps {
+    className?: string;
+    size?: number;
+}
+
+const Logo: React.FC<LogoProps> = ({ className, size = 32 }) => {
+    return (
+        <svg
+            width={size}
+            height={size}
+            viewBox="0 0 128 128"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            className={className}
+        >
+            <defs>
+                <linearGradient id="logo_grad_left" x1="14" y1="24" x2="64" y2="104" gradientUnits="userSpaceOnUse">
+                    <stop offset="0%" stopColor="#00F2FE" />
+                    <stop offset="100%" stopColor="#0077FF" />
+                </linearGradient>
+                <linearGradient id="logo_grad_right" x1="114" y1="24" x2="64" y2="104" gradientUnits="userSpaceOnUse">
+                    <stop offset="0%" stopColor="#7000FF" />
+                    <stop offset="100%" stopColor="#0077FF" />
+                </linearGradient>
+                <filter id="logo_glow" x="-20%" y="-20%" width="140%" height="140%">
+                    <feGaussianBlur stdDeviation="2" result="blur" />
+                    <feComposite in="SourceGraphic" in2="blur" operator="over" />
+                </filter>
+            </defs>
+
+            {/* Left Bottom Page */}
+            <path d="M64 110C40 100 14 105 14 105V35C14 35 40 30 64 40V110Z" fill="url(#logo_grad_left)" opacity="0.6" />
+
+            {/* Right Bottom Page */}
+            <path d="M64 110C88 100 114 105 114 105V35C114 35 88 30 64 40V110Z" fill="url(#logo_grad_right)" opacity="0.6" />
+
+            {/* Left Top Intertwined Page */}
+            <path d="M64 110C50 90 40 85 40 64C40 43 50 38 64 18V45C58 50 54 56 54 64C54 72 58 78 64 83V110Z" fill="url(#logo_grad_left)" />
+
+            {/* Right Top Intertwined Page */}
+            <path d="M64 110C78 90 88 85 88 64C88 43 78 38 64 18V45C70 50 74 56 74 64C74 72 70 78 64 83V110Z" fill="url(#logo_grad_right)" />
+
+            {/* The Spark / Star in the center */}
+            <path d="M64 48L68 64L64 80L60 64L64 48Z" fill="white" filter="url(#logo_glow)" />
+        </svg>
+    );
+};
+
+export default Logo;
