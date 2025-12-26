@@ -330,11 +330,12 @@ class AIService:
         """
         try:
             # Using the correct SDK class as per user instructions
-            response = dashscope.audio.qwen_tts.SpeechSynthesizer.call(
+            response = dashscope.MultiModalConversation.call(
                 model='qwen3-tts-flash',
                 text=text,
                 voice='Jennifer',
-                api_key=os.getenv("DASHSCOPE_API_KEY") 
+                api_key=os.getenv("DASHSCOPE_API_KEY") ,
+                language_type="English"
             )
 
             # Check successful response
