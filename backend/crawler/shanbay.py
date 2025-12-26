@@ -56,14 +56,22 @@ def clean_xml_content(request_xml_text):
         return []
 
     for para_content in para_matches:
-        img_pattern = re.compile(r'<img><url>(.*?)</url>', re.DOTALL)
-        imgs = img_pattern.findall(para_content)
-        for img_url in imgs:
-            if img_url.strip():
-                parseds.append({'type': 'image', 'content': img_url.strip()})
+        # 1. Extract images
+        img_full_pattern = re.compile(r'<img.*?>.*?</img>', re.DOTALL)
+        img_tags = img_full_pattern.findall(para_content)
+        for img_tag in img_tags:
+            url_match = re.search(r'<url>(.*?)</url>', img_tag, re.DOTALL)
+            if url_match:
+                img_url = url_match.group(1).strip()
+                if img_url:
+                    parseds.append({'type': 'image', 'content': img_url})
         
+        # 2. Strip image tags to avoid picking up their descriptions (CDATA) as text
+        text_para_content = img_full_pattern.sub('', para_content)
+        
+        # 3. Extract text sentences
         cdata_pattern = re.compile(r'<!\[CDATA\[(.*?)\]\]>')
-        sentences = cdata_pattern.findall(para_content)
+        sentences = cdata_pattern.findall(text_para_content)
         sentences = [s.strip() for s in sentences if s.strip()]
         
         if sentences:
