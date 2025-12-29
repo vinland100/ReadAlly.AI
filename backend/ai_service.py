@@ -86,7 +86,8 @@ class AIService:
         - Output MUST be STRICTLY valid JSON.
         - Output ONLY the JSON array, no explanations.
 
-        An example:
+        here are a few examples:
+        example 1:
         [
           {{
             "text": "She",
@@ -216,15 +217,185 @@ class AIService:
           }}
         ]
 
-        Target Text:
+        example 2:
+        [
+          {{
+            "text": "He",
+            "type": "normal",
+            "definition": "他",
+            "context_meaning": "指代句中的男性主体",
+            "group_id": null
+          }},
+          {{
+            "text": "gave",
+            "type": "attention",
+            "definition": "放弃（give up）",
+            "context_meaning": "表示停止尝试或不再坚持某事",
+            "group_id": 1
+          }},
+          {{
+            "text": "up",
+            "type": "attention",
+            "definition": "",
+            "context_meaning": "",
+            "group_id": 1
+          }},
+          {{
+            "text": "the",
+            "type": "normal",
+            "definition": "这个",
+            "context_meaning": "特指后面的计划",
+            "group_id": null
+          }},
+          {{
+            "text": "plan",
+            "type": "normal",
+            "definition": "计划",
+            "context_meaning": "指原本打算执行的方案",
+            "group_id": null
+          }},
+          {{
+            "text": "after",
+            "type": "normal",
+            "definition": "在……之后",
+            "context_meaning": "表示时间顺序",
+            "group_id": null
+          }},
+          {{
+            "text": "running",
+            "type": "attention",
+            "definition": "耗尽（run out of）",
+            "context_meaning": "表示资源被完全用完",
+            "group_id": 2
+          }},
+          {{
+            "text": "out",
+            "type": "attention",
+            "definition": "",
+            "context_meaning": "",
+            "group_id": 2
+          }},
+          {{
+            "text": "of",
+            "type": "attention",
+            "definition": "",
+            "context_meaning": "",
+            "group_id": 2
+          }},
+          {{
+            "text": "time",
+            "type": "normal",
+            "definition": "时间",
+            "context_meaning": "指可用的时间资源",
+            "group_id": null
+          }},
+          {{
+            "text": ".",
+            "type": "punctuation",
+            "definition": "",
+            "context_meaning": "",
+            "group_id": null
+          }}
+        ]
+
+        example 3:
+        [
+          {{
+            "text": "They",
+            "type": "normal",
+            "definition": "他们",
+            "context_meaning": "指代做决定的一方",
+            "group_id": null
+          }},
+          {{
+            "text": "took",
+            "type": "attention",
+            "definition": "考虑到；把……纳入考虑（take ... into account）",
+            "context_meaning": "表示在决策时综合考虑因素",
+            "group_id": 2
+          }},
+          {{
+            "text": "all",
+            "type": "normal",
+            "definition": "所有的",
+            "context_meaning": "强调数量完整",
+            "group_id": null
+          }},
+          {{
+            "text": "the",
+            "type": "normal",
+            "definition": "这些",
+            "context_meaning": "限定后面的因素",
+            "group_id": null
+          }},
+          {{
+            "text": "possible",
+            "type": "attention",
+            "definition": "可能的",
+            "context_meaning": "表示不确定但存在的情况",
+            "group_id": null
+          }},
+          {{
+            "text": "risks",
+            "type": "attention",
+            "definition": "风险",
+            "context_meaning": "可能带来负面结果的因素",
+            "group_id": null
+          }},
+          {{
+            "text": "into",
+            "type": "attention",
+            "definition": "",
+            "context_meaning": "",
+            "group_id": 2
+          }},
+          {{
+            "text": "serious",
+            "type": "normal",
+            "definition": "严肃的",
+            "context_meaning": "强调态度",
+            "group_id": null
+          }},
+          {{
+            "text": "account",
+            "type": "attention",
+            "definition": "",
+            "context_meaning": "",
+            "group_id": 2
+          }},
+          {{
+            "text": "before",
+            "type": "normal",
+            "definition": "在……之前",
+            "context_meaning": "表示时间顺序",
+            "group_id": null
+          }},
+          {{
+            "text": "deciding",
+            "type": "normal",
+            "definition": "决定",
+            "context_meaning": "指做出选择",
+            "group_id": null
+          }},
+          {{
+            "text": ".",
+            "type": "punctuation",
+            "definition": "",
+            "context_meaning": "",
+            "group_id": null
+          }}
+        ]
+
+
+        this is the target text:
         {text}
 
-        JSON about the text:
+        JSON about the target text:
         """
 
         try:
             response = Generation.call(
-                model="qwen3-next-80b-a3b-instruct",
+                model="qwen-max",
                 messages=[{'role': 'system', 'content': 'You are a strict JSON outputting AI assistant.'},
                           {'role': 'user', 'content': prompt}],
                 result_format='message'
