@@ -224,7 +224,7 @@ class AIService:
 
         try:
             response = Generation.call(
-                model="qwen-max",
+                model="qwen3-next-80b-a3b-instruct",
                 messages=[{'role': 'system', 'content': 'You are a strict JSON outputting AI assistant.'},
                           {'role': 'user', 'content': prompt}],
                 result_format='message'
