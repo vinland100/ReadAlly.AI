@@ -395,7 +395,7 @@ class AIService:
 
         try:
             response = Generation.call(
-                model="qwen-max",
+                model="qwen3-coder-plus",
                 messages=[{'role': 'system', 'content': 'You are a strict JSON outputting AI assistant.'},
                           {'role': 'user', 'content': prompt}],
                 result_format='message'
@@ -419,10 +419,10 @@ class AIService:
     @staticmethod
     def translate_paragraph(text: str):
         prompt = f"""
-        Translate the following English paragraph into fluent, natural Chinese.
+        Translate the following English paragraph into fluent, formal Chinese.
         Output MUST be a valid JSON object with the following structure:
         {{
-            "translation": "natural chinese translation",
+            "translation": "formal chinese translation",
             "style": "description of the writing style (e.g. academic, conversational, poetic)",
             "key_phrases": [
                 {{"en": "phrase", "cn": "chinese equivalent"}}
