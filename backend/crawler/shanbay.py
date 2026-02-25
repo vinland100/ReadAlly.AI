@@ -84,6 +84,22 @@ def import_json_string(data):
     if isinstance(data, str): return data
     return json.dumps(data, ensure_ascii=False)
 
+def retry_with_backoff(func, *args, max_retries=3, initial_delay=2, backoff_factor=2, **kwargs):
+    """
+    Executes a function with a retry mechanism and exponential backoff.
+    """
+    delay = initial_delay
+    for attempt in range(max_retries):
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:
+            if attempt == max_retries - 1:
+                logger.error(f"Failed after {max_retries} attempts. Last error: {e}")
+                raise e
+            logger.warning(f"Attempt {attempt + 1} failed: {e}. Retrying in {delay} seconds...")
+            time.sleep(delay)
+            delay *= backoff_factor
+            
 def process_article_eagerly(session: Session, article: Article):
     logger.info(f"Processing article eager pipeline: {article.title}")
     
@@ -98,7 +114,7 @@ def process_article_eagerly(session: Session, article: Article):
         # 1. Translation
         if not p.translation:
             try:
-                trans_res = AIService.translate_paragraph(p.content)
+                trans_res = retry_with_backoff(AIService.translate_paragraph, p.content)
                 p.translation = import_json_string(trans_res)
                 session.add(p)
                 session.commit()
@@ -109,7 +125,7 @@ def process_article_eagerly(session: Session, article: Article):
         # 2. Syntax
         if not p.syntax:
             try:
-                syntax_res = AIService.analyze_syntax(p.content)
+                syntax_res = retry_with_backoff(AIService.analyze_syntax, p.content)
                 p.syntax = import_json_string(syntax_res)
                 session.add(p)
                 session.commit()
@@ -125,7 +141,7 @@ def process_article_eagerly(session: Session, article: Article):
         
         if not p.audio_path or not os.path.exists(p_audio_path):
              try:
-                 audio_bytes = AIService.generate_tts(p.content)
+                 audio_bytes = retry_with_backoff(AIService.generate_tts, p.content)
                  if audio_bytes:
                      with open(p_audio_path, "wb") as f:
                          f.write(audio_bytes)
@@ -150,14 +166,11 @@ def process_article_eagerly(session: Session, article: Article):
             continue
 
         logger.info(f"  - Analyzing vocabulary for batch {i//batch_size + 1}")
-        # Process per paragraph for now to align with new single-paragraph storage
-        # Or we can batch call and distribute. The new prompt is per-paragraph friendly.
-        # Let's do per-paragraph to ensure correct mapping without complex parsing.
         
         for p in batch:
             if not p.analysis and p.content.strip():
                 try:
-                    analysis_json = AIService.analyze_vocabulary(p.content, article.difficulty.value)
+                    analysis_json = retry_with_backoff(AIService.analyze_vocabulary, p.content, article.difficulty.value)
                     if isinstance(analysis_json, list):
                         p.analysis = import_json_string(analysis_json)
                         session.add(p)
