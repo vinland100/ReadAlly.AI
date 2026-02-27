@@ -118,6 +118,7 @@ def process_article_eagerly(session: Session, article: Article):
                 p.translation = import_json_string(trans_res)
                 session.add(p)
                 session.commit()
+                logger.debug(f"  - 段落 {p.id} 翻译完成")
             except Exception as e:
                 logger.error(f"段落 {p.id} 翻译失败: {e}")
             time.sleep(0.5)
@@ -129,6 +130,7 @@ def process_article_eagerly(session: Session, article: Article):
                 p.syntax = import_json_string(syntax_res)
                 session.add(p)
                 session.commit()
+                logger.debug(f"  - 段落 {p.id} 句法分析完成")
             except Exception as e:
                 logger.error(f"段落 {p.id} 句法分析失败: {e}")
             time.sleep(0.5)
@@ -179,6 +181,7 @@ def process_article_eagerly(session: Session, article: Article):
                 time.sleep(0.5)
         
         session.commit()
+        logger.info(f"  - 第 {i//batch_size + 1} 批词汇分析完成")
         time.sleep(1)
 
 def fetch_shanbay_articles():
@@ -206,6 +209,7 @@ def fetch_shanbay_articles():
             articles_to_delete = session.exec(statement).all()
             
             if articles_to_delete:
+                logger.info(f"正在清理 {len(articles_to_delete)} 篇旧文章...")
                 for art in articles_to_delete:
                     # Cleanup audio directory
                     try:
@@ -236,7 +240,9 @@ def fetch_shanbay_articles():
                 resp = requests.get(list_url, params={"ipp": 10, "page": page}, headers=headers)
                 if resp.status_code != 200: break
                 articles_data = resp.json().get('objects', [])
-                if not articles_data: break
+                if not articles_data: 
+                    logger.info("未发现更多文章。")
+                    break
             except Exception as e:
                 logger.error(f"网络错误: {e}")
                 break
@@ -257,6 +263,7 @@ def fetch_shanbay_articles():
                 
                 existing = session.exec(select(Article).where(Article.source_url.contains(article_id))).first()
                 if existing:
+                    logger.info(f"文章已存在，跳过抓取: {item.get('title') or article_id}")
                     # Skip discovery as it's already in DB. 
                     # Processing will be handled in the second pass.
                     continue

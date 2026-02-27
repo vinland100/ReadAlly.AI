@@ -64,6 +64,7 @@ def on_startup():
     scheduler.add_job(fetch_shanbay_articles, 'cron', hour=10, minute=0, timezone=CN_TZ)
     scheduler.start()
     print("调度器已启动。扇贝爬虫设置为每日上午 10:00 运行。")
+    logger.info("系统启动成功，正在监听请求...")
 
 @app.post("/register", response_model=Token)
 def register(user_in: UserCreate, session: Session = Depends(get_session)):

@@ -44,6 +44,8 @@ def get_article_page(
     if not article:
         raise HTTPException(status_code=404, detail="Article not found")
 
+    logger.info(f"读取文章: {article.title} (ID: {article.id}) | 第 {page_num} 页")
+
     paragraphs = session.exec(
         select(Paragraph)
         .where(Paragraph.article_id == article.id)

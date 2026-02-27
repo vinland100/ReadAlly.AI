@@ -11,7 +11,6 @@ from models import DifficultyLevel
 import requests
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Ensure API key is set
@@ -393,6 +392,8 @@ class AIService:
         JSON about the target text:
         """
 
+        logger.info(f"正在进行 AI 词汇分析 (长度: {len(text)} 字符)...")
+        start_time = time.time()
         try:
             response = Generation.call(
                 model="qwen3-coder-plus",
@@ -408,6 +409,7 @@ class AIService:
                     content = content[7:]
                 if content.endswith("```"):
                     content = content[:-3]
+                logger.info(f"AI 词汇分析完成，耗时: {time.time() - start_time:.2f}s")
                 return json.loads(content)
             else:
                 logger.error(f"AI 词汇分析错误: {response.code} - {response.message}")
@@ -433,6 +435,8 @@ class AIService:
         Text:
         {text}
         """
+        logger.info(f"正在进行 AI 翻译 (长度: {len(text)} 字符)...")
+        start_time = time.time()
         try:
             response = Generation.call(
                 model="qwen3-next-80b-a3b-instruct",
@@ -444,6 +448,7 @@ class AIService:
                 content = response.output.choices[0].message.content.strip()
                 if content.startswith("```json"): content = content[7:]
                 if content.endswith("```"): content = content[:-3]
+                logger.info(f"AI 翻译完成，耗时: {time.time() - start_time:.2f}s")
                 return json.loads(content)
             return {"translation": "Translation failed."}
         except Exception as e:
