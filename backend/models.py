@@ -23,6 +23,12 @@ class User(SQLModel, table=True):
     last_read_date: Optional[datetime] = None
     avatar_seed: str = Field(default="Cookie")
 
+class ReadingRecord(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="user.id", index=True)
+    date: str = Field(index=True) # YYYY-MM-DD in China Standard Time
+    words_read: int = Field(default=0)
+
 class Article(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     title: str

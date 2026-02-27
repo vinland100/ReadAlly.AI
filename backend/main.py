@@ -4,7 +4,7 @@ from sqlmodel import Session, select
 from typing import List, Optional
 from datetime import datetime, timedelta, timezone
 from database import create_db_and_tables, get_session
-from models import User, Article, Paragraph
+from models import User, Article, Paragraph, ReadingRecord
 from auth import get_password_hash, verify_password, create_access_token, get_current_user
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel
@@ -18,9 +18,11 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from crawler.shanbay import fetch_shanbay_articles
 import asyncio
 from log_conf import setup_logging
+import logging
 
 # Setup Logging with CST
 setup_logging()
+logger = logging.getLogger(__name__)
 
 # China Standard Time
 CN_TZ = timezone(timedelta(hours=8))
@@ -153,6 +155,7 @@ def get_user_stats(current_user: User = Depends(get_current_user), session: Sess
 def record_reading(article_id: int, word_count: int, current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
     now_cn = datetime.now(CN_TZ)
     today_cn = now_cn.date()
+    today_str = today_cn.strftime("%Y-%m-%d")
     
     # Reset words if it's a new day
     if current_user.last_read_date:
@@ -180,10 +183,31 @@ def record_reading(article_id: int, word_count: int, current_user: User = Depend
     # Save as naive UTC in DB
     current_user.last_read_date = datetime.utcnow()
     session.add(current_user)
+
+    # Handle ReadingRecord
+    record = session.exec(select(ReadingRecord).where(
+        ReadingRecord.user_id == current_user.id,
+        ReadingRecord.date == today_str
+    )).first()
+
+    if record:
+        record.words_read += word_count
+    else:
+        record = ReadingRecord(user_id=current_user.id, date=today_str, words_read=word_count)
+    session.add(record)
+
     session.commit()
     
     return {"message": "Reading recorded", "words_today": current_user.words_read_today, "streak": current_user.current_streak}
 
+@app.get("/users/me/reading-records")
+def get_reading_records(year: int, month: int, current_user: User = Depends(get_current_user), session: Session = Depends(get_session)):
+    month_prefix = f"{year}-{month:02d}-"
+    records = session.exec(select(ReadingRecord).where(
+        ReadingRecord.user_id == current_user.id,
+        ReadingRecord.date.startswith(month_prefix)
+    )).all()
+    return records
 class PasswordChange(BaseModel):
     old_password: str
     new_password: str

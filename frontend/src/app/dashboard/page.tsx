@@ -6,6 +6,7 @@ import api from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store';
 import Logo from '@/components/common/Logo';
+import StreakCalendar from '@/components/dashboard/StreakCalendar';
 
 export default function DashboardScreen() {
     useTheme('light');
@@ -89,7 +90,7 @@ export default function DashboardScreen() {
                         {/* Hero */}
                         <div className="flex-[2] rounded-2xl bg-white shadow-sm border border-slate-200 p-2 overflow-hidden">
                             <div className="flex flex-col items-stretch justify-start h-full md:flex-row md:items-center gap-4">
-                                <div className="w-full md:w-1/2 h-48 md:h-full min-h-[240px] bg-center bg-no-repeat bg-cover rounded-xl" style={{ backgroundImage: 'url("https://lh3.googleusercontent.com/aida-public/AB6AXuB1zvUKwe7MB09uWaZdCXRoaBTU1Q0Qo4ys3rsKReewuJP3-DwYtLbusz88GTLjn2aZ1xxffR5kRpLtFsU-g3hOKXWpxvGLkwidp8VVt_iMaFwguTNhEw5MjVKyjeQYhrL3wsf8BJOdBfD6EmbqjicnXGvfewi-jPgibWiTwqiPwehEdjXDwCHbhSFqGs782DQ0YQFEnQNWllR40fA61qQDoauz4n6hqi720T4OXh5oWjVyjKYmwK85elxtfKJeWT_xQ8bjiFU0M9l6")' }}></div>
+                                <div className="w-full md:w-1/2 h-48 md:h-full min-h-[240px] bg-center bg-no-repeat bg-cover rounded-xl" style={{ backgroundImage: 'url("/hero-bg.png")' }}></div>
                                 <div className="flex flex-col justify-center gap-3 p-4">
                                     <div className="inline-flex items-center gap-2">
                                         <span className="bg-[#135bec]/10 text-[#135bec] text-xs font-bold px-2 py-1 rounded uppercase tracking-wider">Daily Pick</span>
@@ -130,15 +131,7 @@ export default function DashboardScreen() {
                                     <p className="text-slate-900 text-3xl font-bold mt-1">{stats.wordsRead}</p>
                                 </div>
                             </div>
-                            <div className="flex-1 flex flex-col justify-between gap-2 rounded-2xl p-6 bg-white border border-slate-200 shadow-sm">
-                                <div className="flex justify-between items-start">
-                                    <div className="p-2 bg-orange-100 rounded-lg text-orange-600"><span className="material-symbols-outlined">local_fire_department</span></div>
-                                </div>
-                                <div>
-                                    <p className="text-slate-500 text-sm font-medium">Current Streak</p>
-                                    <p className="text-slate-900 text-3xl font-bold mt-1">{stats.streak} <span className="text-base font-normal text-slate-400">Days</span></p>
-                                </div>
-                            </div>
+                            <StreakCalendar />
                         </div>
                     </div>
 
