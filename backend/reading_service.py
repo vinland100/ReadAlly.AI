@@ -75,9 +75,9 @@ def get_article_page(
                      session.commit()
                      session.refresh(p)
                 else:
-                     logger.error(f"Invalid analysis format for paragraph {p.id}")
+                     logger.error(f"段落 {p.id} 的分析格式无效")
             except Exception as e:
-                logger.error(f"Analysis failed for paragraph {p.id}: {e}")
+                logger.error(f"段落 {p.id} 分析失败: {e}")
                 # Continue without crashing, render plain text on frontend is better than 500
         
         # Prepare response
@@ -227,7 +227,7 @@ def _get_or_generate_audio(p: Paragraph, session: Session):
             return Response(content=f.read(), media_type="audio/mpeg")
             
     # 4. Not found? GENERATE IT.
-    logger.info(f"Audio missing for paragraph {p.id}. Generating on-demand...")
+    logger.info(f"段落 {p.id} 缺少音频。正在按需生成...")
     
     try:
         audio_bytes = AIService.generate_tts(p.content)
@@ -252,5 +252,5 @@ def _get_or_generate_audio(p: Paragraph, session: Session):
             raise HTTPException(status_code=500, detail="Failed to generate audio from AI service")
             
     except Exception as e:
-        logger.error(f"On-demand TTS generation failed: {e}")
+        logger.error(f"按需生成 TTS 失败: {e}")
         raise HTTPException(status_code=500, detail=f"TTS Generation failed: {str(e)}")

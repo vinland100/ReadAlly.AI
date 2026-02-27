@@ -410,10 +410,10 @@ class AIService:
                     content = content[:-3]
                 return json.loads(content)
             else:
-                logger.error(f"AI Vocab Analysis Error: {response.code} - {response.message}")
+                logger.error(f"AI 词汇分析错误: {response.code} - {response.message}")
                 return []
         except Exception as e:
-            logger.error(f"AI Vocab Analysis Exception: {e}")
+            logger.error(f"AI 词汇分析异常: {e}")
             return []
 
     @staticmethod
@@ -447,7 +447,7 @@ class AIService:
                 return json.loads(content)
             return {"translation": "Translation failed."}
         except Exception as e:
-            logger.error(f"Translation Exception: {e}")
+            logger.error(f"翻译异常: {e}")
             return {"translation": "Translation error."}
 
     @staticmethod
@@ -490,7 +490,7 @@ class AIService:
                 return json.loads(content)
             return {"error": "Analysis failed."}
         except Exception as e:
-            logger.error(f"Syntax Analysis Exception: {e}")
+            logger.error(f"句法分析异常: {e}")
             return {"error": "Analysis error."}
 
     @staticmethod
@@ -519,17 +519,17 @@ class AIService:
                     if r.status_code == 200:
                         return r.content
                     else:
-                        logger.error(f"TTS Download Error: {r.status_code}")
+                        logger.error(f"TTS 下载错误: {r.status_code}")
                         return None
                 else:
-                    logger.error(f"TTS Response missing audio url: {response}")
+                    logger.error(f"TTS 响应缺少音频 URL: {response}")
                     return None
             else:
-                logger.error(f"TTS API Error: {response.code} - {response.message}")
+                logger.error(f"TTS API 错误: {response.code} - {response.message}")
                 return None
 
         except Exception as e:
-            logger.error(f"TTS Exception: {e}")
+            logger.error(f"TTS 异常: {e}")
             return None
 
 # Fix for SpeechSynthesizer import

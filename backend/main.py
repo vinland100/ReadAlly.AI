@@ -63,7 +63,7 @@ def on_startup():
     # Schedule Shanbay crawler at 10:00 AM daily
     scheduler.add_job(fetch_shanbay_articles, 'cron', hour=10, minute=0, timezone=CN_TZ)
     scheduler.start()
-    print("Scheduler started. Shanbay crawler set for 10:00 AM.")
+    print("调度器已启动。扇贝爬虫设置为每日上午 10:00 运行。")
 
 @app.post("/register", response_model=Token)
 def register(user_in: UserCreate, session: Session = Depends(get_session)):

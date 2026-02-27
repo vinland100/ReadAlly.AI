@@ -39,7 +39,7 @@ def setup_logging():
     
     # Configure specific libraries to propagate or use this setup
     # SQLAlchemy
-    logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
+    logging.getLogger('sqlalchemy.engine').setLevel(logging.WARNING)
     
     # Uvicorn - Uvicorn configures itself, we need to override if we want consistency
     # or let Uvicorn handle its own, but we want CST.

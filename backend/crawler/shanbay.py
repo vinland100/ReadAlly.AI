@@ -94,14 +94,14 @@ def retry_with_backoff(func, *args, max_retries=3, initial_delay=2, backoff_fact
             return func(*args, **kwargs)
         except Exception as e:
             if attempt == max_retries - 1:
-                logger.error(f"Failed after {max_retries} attempts. Last error: {e}")
+                logger.error(f"在 {max_retries} 次尝试后失败。最后一次错误: {e}")
                 raise e
-            logger.warning(f"Attempt {attempt + 1} failed: {e}. Retrying in {delay} seconds...")
+            logger.warning(f"第 {attempt + 1} 次尝试失败: {e}。将在 {delay} 秒后重试...")
             time.sleep(delay)
             delay *= backoff_factor
             
 def process_article_eagerly(session: Session, article: Article):
-    logger.info(f"Processing article eager pipeline: {article.title}")
+    logger.info(f"正在进行文章积极处理流程: {article.title}")
     
     article_audio_dir = os.path.join(AUDIO_DIR, str(article.id))
     os.makedirs(article_audio_dir, exist_ok=True)
@@ -119,7 +119,7 @@ def process_article_eagerly(session: Session, article: Article):
                 session.add(p)
                 session.commit()
             except Exception as e:
-                logger.error(f"Translation failed for {p.id}: {e}")
+                logger.error(f"段落 {p.id} 翻译失败: {e}")
             time.sleep(0.5)
 
         # 2. Syntax
@@ -130,7 +130,7 @@ def process_article_eagerly(session: Session, article: Article):
                 session.add(p)
                 session.commit()
             except Exception as e:
-                logger.error(f"Syntax failed for {p.id}: {e}")
+                logger.error(f"段落 {p.id} 句法分析失败: {e}")
             time.sleep(0.5)
 
         # 3. Audio
@@ -149,9 +149,9 @@ def process_article_eagerly(session: Session, article: Article):
                      session.add(p)
                      session.commit()
                  else:
-                     logger.error(f"Failed to generate TTS for paragraph {p.id}")
+                     logger.error(f"段落 {p.id} 生成 TTS 失败")
              except Exception as e:
-                 logger.error(f"TTS failed for {p.id}: {e}")
+                 logger.error(f"段落 {p.id} TTS 失败: {e}")
              time.sleep(0.5)
 
     # 4. Vocabulary (Batched by 20 to match pagination)
@@ -165,7 +165,7 @@ def process_article_eagerly(session: Session, article: Article):
         if all(p.analysis for p in batch):
             continue
 
-        logger.info(f"  - Analyzing vocabulary for batch {i//batch_size + 1}")
+        logger.info(f"  - 正在分析第 {i//batch_size + 1} 批词汇")
         
         for p in batch:
             if not p.analysis and p.content.strip():
@@ -175,7 +175,7 @@ def process_article_eagerly(session: Session, article: Article):
                         p.analysis = import_json_string(analysis_json)
                         session.add(p)
                 except Exception as e:
-                    logger.error(f"Vocab analysis failed for paragraph {p.id}: {e}")
+                    logger.error(f"段落 {p.id} 词汇分析失败: {e}")
                 time.sleep(0.5)
         
         session.commit()
@@ -195,6 +195,7 @@ def fetch_shanbay_articles():
     print(f"Retention Policy: Keeping articles from {cutoff_date} onwards.")
 
     # 1. Cleanup Old Data First (Delete anything older than cutoff)
+    logger.info("Phase 1: 开始清理旧文章")
     try:
         with Session(engine) as session:
             # Cutoff datetime at start of day
@@ -212,7 +213,7 @@ def fetch_shanbay_articles():
                         if os.path.exists(audio_path):
                             shutil.rmtree(audio_path)
                     except Exception as e:
-                        logger.error(f"Failed to delete audio dir for {art.id}: {e}")
+                        logger.error(f"删除文章 {art.id} 的音视频目录失败: {e}")
 
                     session.delete(art)
                 
@@ -225,29 +226,29 @@ def fetch_shanbay_articles():
 
 
     # 2. Fetch New Articles
+    logger.info("Phase 2: 开始爬取新文章")
     page = 1
     
     with Session(engine) as session:
         while True:
-            logger.info(f"Fetching page {page}...")
+            logger.info(f"正在抓取第 {page} 页...")
             try:
                 resp = requests.get(list_url, params={"ipp": 10, "page": page}, headers=headers)
                 if resp.status_code != 200: break
                 articles_data = resp.json().get('objects', [])
                 if not articles_data: break
             except Exception as e:
-                logger.error(f"Network error: {e}")
+                logger.error(f"网络错误: {e}")
                 break
             
             # Check dates
-            page_too_old = False
             for item in articles_data:
                 item_date_str = item.get('date')
                 if item_date_str:
                     try:
                         item_date = datetime.strptime(item_date_str, "%Y-%m-%d").date()
                         if item_date < cutoff_date:
-                            logger.info(f"Page contains articles older than {cutoff_date}. Stopping crawl.")
+                            logger.info(f"页面包含早于 {cutoff_date} 的文章。停止爬取。")
                             return
                     except: pass
             
@@ -256,9 +257,8 @@ def fetch_shanbay_articles():
                 
                 existing = session.exec(select(Article).where(Article.source_url.contains(article_id))).first()
                 if existing:
-                    # Already exists, we check if processed just in case.
-                    if not existing.paragraphs or not existing.paragraphs[0].translation:
-                         process_article_eagerly(session, existing)
+                    # Skip discovery as it's already in DB. 
+                    # Processing will be handled in the second pass.
                     continue
                 
                 # Fetch details
@@ -278,7 +278,7 @@ def fetch_shanbay_articles():
                     except: pass
                 
                 if published_at.date() < cutoff_date:
-                    logger.info("Article too old. Stopping.")
+                    logger.info("文章太旧。停止。")
                     return
 
                 # Difficulty
@@ -318,8 +318,9 @@ def fetch_shanbay_articles():
                 session.commit()
                 session.refresh(article)
                 
-                # Eager Process
-                process_article_eagerly(session, article)
+                # Skip Eager Process here to avoid blocking discovery.
+                # Processing will be handled in the second pass.
+                # process_article_eagerly(session, article)
                 
                 time.sleep(1) # Rate limit
 
@@ -327,3 +328,22 @@ def fetch_shanbay_articles():
             if page > 5: break # Safety - 3 days fit in 3-5 pages usually
 
             time.sleep(1)
+
+    # 3. Phase 2: Sequential Processing Pass
+    # After discovering all new articles, we iterate through recent articles to process them.
+    logger.info("Phase 3: 开始调用文章 AI 顺序处理每一篇文章")
+    with Session(engine) as session:
+        # Re-calculate cutoff for identifying recent articles to process
+        cutoff_dt = datetime.combine(cutoff_date, datetime.min.time()).replace(tzinfo=CN_TZ)
+        recent_articles = session.exec(select(Article).where(Article.published_at >= cutoff_dt)).all()
+        
+        for art in recent_articles:
+            # Re-fetch or check paragraphs to ensure we have the latest state
+            # Using the user's original check mechanism as requested
+            if not art.paragraphs or not art.paragraphs[0].translation:
+                try:
+                    process_article_eagerly(session, art)
+                except Exception as e:
+                    logger.error(f"文章 {art.id} 顺序处理失败: {e}")
+
+    logger.info("扇贝文章爬取和处理任务完成。")
