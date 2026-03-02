@@ -232,9 +232,10 @@ def fetch_shanbay_articles():
     # 2. Fetch New Articles
     logger.info("Phase 2: 开始爬取新文章")
     page = 1
+    stop_crawling = False
     
     with Session(engine) as session:
-        while True:
+        while not stop_crawling:
             logger.info(f"正在抓取第 {page} 页...")
             try:
                 resp = requests.get(list_url, params={"ipp": 10, "page": page}, headers=headers)
@@ -255,8 +256,12 @@ def fetch_shanbay_articles():
                         item_date = datetime.strptime(item_date_str, "%Y-%m-%d").date()
                         if item_date < cutoff_date:
                             logger.info(f"页面包含早于 {cutoff_date} 的文章。停止爬取。")
-                            return
+                            stop_crawling = True
+                            break
                     except: pass
+            
+            if stop_crawling:
+                break
             
             for item in articles_data:
                 article_id = item.get('id')
@@ -286,7 +291,8 @@ def fetch_shanbay_articles():
                 
                 if published_at.date() < cutoff_date:
                     logger.info("文章太旧。停止。")
-                    return
+                    stop_crawling = True
+                    break
 
                 # Difficulty
                 grade_info = detail.get('grade_info')
