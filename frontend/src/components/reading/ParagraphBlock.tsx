@@ -1,8 +1,9 @@
-import React, { Fragment, useRef, useState, useEffect } from 'react';
+import React, { Fragment, useRef, useState, useEffect, useCallback } from 'react';
 import { Popover, Transition, Dialog } from '@headlessui/react';
 import api from '@/lib/api';
 import clsx from 'clsx';
 import { useAuthStore } from '@/lib/store';
+import { pronounceWord, pronouncePhrase, stopPronunciation } from '@/lib/useWordPronunciation';
 
 
 
@@ -49,6 +50,80 @@ export default function ParagraphBlock({ id, content, image_url, audio_path, ana
     // Selection state for Pop-up
     const [selectedToken, setSelectedToken] = useState<Token | null>(null);
     const [hoveredGroupId, setHoveredGroupId] = useState<number | null>(null);
+    const [isSpeaking, setIsSpeaking] = useState(false);
+
+    // Build the display title for the selected token (word or phrase)
+    const getSelectedTitle = useCallback((): string => {
+        if (!selectedToken) return '';
+        if (selectedToken.group_id !== null && selectedToken.group_id !== undefined) {
+            const groupTokens = analysis.map((t, i) => ({ ...t, index: i }))
+                .filter(t => t.group_id === selectedToken.group_id);
+            if (groupTokens.length > 1) {
+                let title = groupTokens[0].text;
+                for (let i = 1; i < groupTokens.length; i++) {
+                    const prev = groupTokens[i - 1];
+                    const curr = groupTokens[i];
+                    if (curr.index === prev.index + 1) {
+                        title += ' ' + curr.text;
+                    } else {
+                        title += '...' + curr.text;
+                    }
+                }
+                return title;
+            }
+        }
+        return selectedToken.text;
+    }, [selectedToken, analysis]);
+
+    // Determine if the selected token is a phrase (multi-word)
+    const isPhrase = useCallback((): boolean => {
+        if (!selectedToken) return false;
+        if (selectedToken.group_id !== null && selectedToken.group_id !== undefined) {
+            const groupTokens = analysis.filter(t => t.group_id === selectedToken.group_id);
+            return groupTokens.length > 1;
+        }
+        return false;
+    }, [selectedToken, analysis]);
+
+    // Handle pronunciation of a single word or a list of words in sequence
+    const handlePronounce = useCallback(async (words: string | string[]) => {
+        setIsSpeaking(true);
+        try {
+            const list = Array.isArray(words) ? words : [words];
+            if (list.length > 1) {
+                await pronouncePhrase(list);
+            } else {
+                await pronounceWord(list[0]);
+            }
+        } catch {
+            // silently fail
+        } finally {
+            setIsSpeaking(false);
+        }
+    }, []);
+
+    // Auto-pronounce when popup opens
+    useEffect(() => {
+        if (selectedToken) {
+            const title = getSelectedTitle();
+            if (!title) return;
+
+            // Extract all real words from the title (skip "..." separators)
+            const words = title.split(/[^a-zA-Z'-]+/).filter(Boolean);
+            if (words.length === 0) return;
+
+            if (isPhrase() && words.length > 1) {
+                // Play every word in the phrase sequentially
+                handlePronounce(words);
+            } else {
+                // Single word
+                handlePronounce([words[0]]);
+            }
+        } else {
+            stopPronunciation();
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [selectedToken]);
 
     // ... (Keep handleTranslate, handleSyntax logic) ...
     // Note: Ensure handleTranslate and handleSyntax use 'content' or reconstruct text from tokens if needed. 'content' prop is still passed, so it's safe.
@@ -416,30 +491,76 @@ export default function ParagraphBlock({ id, content, image_url, audio_path, ana
                                 <Dialog.Panel className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white dark:bg-[#1e293b] p-6 text-left align-middle shadow-xl transition-all border border-slate-200 dark:border-slate-700">
                                     <Dialog.Title as="div" className="flex justify-between items-start border-b border-slate-100 dark:border-slate-800 pb-4 mb-4">
                                         <div className="flex flex-col gap-1">
-                                            <h3 className="text-2xl font-bold text-slate-900 dark:text-white leading-tight">
-                                                {(() => {
-                                                    if (!selectedToken) return '';
-                                                    if (selectedToken.group_id !== null && selectedToken.group_id !== undefined) {
-                                                        const groupTokens = analysis.map((t, i) => ({ ...t, index: i }))
-                                                            .filter(t => t.group_id === selectedToken.group_id);
+                                            <div className="flex items-center gap-2">
+                                                <h3 className="text-2xl font-bold text-slate-900 dark:text-white leading-tight">
+                                                    {(() => {
+                                                        const title = getSelectedTitle();
+                                                        if (!title) return '';
 
-                                                        if (groupTokens.length > 1) {
-                                                            let title = groupTokens[0].text;
-                                                            for (let i = 1; i < groupTokens.length; i++) {
-                                                                const prev = groupTokens[i - 1];
-                                                                const curr = groupTokens[i];
-                                                                if (curr.index === prev.index + 1) {
-                                                                    title += ' ' + curr.text;
-                                                                } else {
-                                                                    title += '...' + curr.text;
+                                                        // If it's a phrase, make each word clickable for pronunciation
+                                                        if (isPhrase()) {
+                                                            const parts = title.split(/(\.\.\.|\s+)/);
+                                                            return parts.map((part, i) => {
+                                                                const isWord = /^[a-zA-Z'-]+$/.test(part);
+                                                                if (isWord) {
+                                                                    return (
+                                                                        <span
+                                                                            key={i}
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
+                                                                                handlePronounce(part);
+                                                                            }}
+                                                                            className="cursor-pointer hover:text-blue-500 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 px-0.5 rounded transition-all duration-200 active:scale-95"
+                                                                            title={`Click to pronounce "${part}"`}
+                                                                        >
+                                                                            {part}
+                                                                        </span>
+                                                                    );
                                                                 }
-                                                            }
-                                                            return title;
+                                                                return <span key={i}>{part}</span>;
+                                                            });
                                                         }
-                                                    }
-                                                    return selectedToken.text;
-                                                })()}
-                                            </h3>
+
+                                                        // Single word - entire title is clickable
+                                                        return (
+                                                            <span
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    handlePronounce(title);
+                                                                }}
+                                                                className="cursor-pointer hover:text-blue-500 dark:hover:text-blue-400 transition-colors duration-200"
+                                                                title={`Click to pronounce "${title}"`}
+                                                            >
+                                                                {title}
+                                                            </span>
+                                                        );
+                                                    })()}
+                                                </h3>
+                                                {/* Speaker button for manual replay */}
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        const title = getSelectedTitle();
+                                                        const words = title.split(/[^a-zA-Z'-]+/).filter(Boolean);
+                                                        if (words.length > 1 && isPhrase()) {
+                                                            handlePronounce(words);
+                                                        } else if (words.length > 0) {
+                                                            handlePronounce([words[0]]);
+                                                        }
+                                                    }}
+                                                    className={clsx(
+                                                        "p-1.5 rounded-lg transition-all duration-200 active:scale-90",
+                                                        isSpeaking
+                                                            ? "text-blue-500 bg-blue-50 dark:bg-blue-900/30 dark:text-blue-400 animate-pulse"
+                                                            : "text-slate-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 dark:hover:text-blue-400"
+                                                    )}
+                                                    title="Play pronunciation"
+                                                >
+                                                    <span className="material-symbols-outlined text-[20px]">
+                                                        {isSpeaking ? 'volume_up' : 'volume_up'}
+                                                    </span>
+                                                </button>
+                                            </div>
                                             {selectedToken?.type === 'attention' && (
                                                 <div className="flex items-center gap-2 mt-1">
                                                     <span className="px-2 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">
