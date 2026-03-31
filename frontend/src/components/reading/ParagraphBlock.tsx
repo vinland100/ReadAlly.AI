@@ -3,7 +3,7 @@ import { Popover, Transition, Dialog } from '@headlessui/react';
 import api from '@/lib/api';
 import clsx from 'clsx';
 import { useAuthStore } from '@/lib/store';
-import { pronounceWord, pronouncePhrase, stopPronunciation } from '@/lib/useWordPronunciation';
+import { pronounceWord, pronouncePhrase, stopPronunciation, getWordPronunciation } from '@/lib/useWordPronunciation';
 
 
 
@@ -51,6 +51,7 @@ export default function ParagraphBlock({ id, content, image_url, audio_path, ana
     const [selectedToken, setSelectedToken] = useState<Token | null>(null);
     const [hoveredGroupId, setHoveredGroupId] = useState<number | null>(null);
     const [isSpeaking, setIsSpeaking] = useState(false);
+    const [wordPhonetics, setWordPhonetics] = useState<Record<string, string>>({});
 
     // Build the display title for the selected token (word or phrase)
     const getSelectedTitle = useCallback((): string => {
@@ -102,26 +103,39 @@ export default function ParagraphBlock({ id, content, image_url, audio_path, ana
         }
     }, []);
 
-    // Auto-pronounce when popup opens
+    // Auto-pronounce and fetch phonetics when popup opens
     useEffect(() => {
-        if (selectedToken) {
-            const title = getSelectedTitle();
-            if (!title) return;
+        const handleTokenChange = async () => {
+            if (selectedToken) {
+                const title = getSelectedTitle();
+                if (!title) return;
 
-            // Extract all real words from the title (skip "..." separators)
-            const words = title.split(/[^a-zA-Z'-]+/).filter(Boolean);
-            if (words.length === 0) return;
+                const words = title.split(/[^a-zA-Z'-]+/).filter(Boolean);
+                if (words.length === 0) return;
 
-            if (isPhrase() && words.length > 1) {
-                // Play every word in the phrase sequentially
-                handlePronounce(words);
+                // 1. Fetch Phonetics
+                const newPhonetics: Record<string, string> = {};
+                await Promise.all(words.map(async (w: string) => {
+                    const data = await getWordPronunciation(w);
+                    if (data?.phonetic) {
+                        newPhonetics[w.toLowerCase()] = data.phonetic;
+                    }
+                }));
+                setWordPhonetics(newPhonetics);
+
+                // 2. Play Audio
+                if (isPhrase() && words.length > 1) {
+                    handlePronounce(words);
+                } else {
+                    handlePronounce([words[0]]);
+                }
             } else {
-                // Single word
-                handlePronounce([words[0]]);
+                setWordPhonetics({});
+                stopPronunciation();
             }
-        } else {
-            stopPronunciation();
-        }
+        };
+
+        handleTokenChange();
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedToken]);
 
@@ -561,6 +575,35 @@ export default function ParagraphBlock({ id, content, image_url, audio_path, ana
                                                     </span>
                                                 </button>
                                             </div>
+
+                                            {/* Phonetic transcription display */}
+                                            <div className="flex flex-wrap gap-2 text-slate-500 dark:text-slate-400 font-serif text-sm">
+                                                {(() => {
+                                                    const title = getSelectedTitle();
+                                                    const words = title.split(/[^a-zA-Z'-]+/).filter(Boolean);
+                                                    if (words.length === 0) return null;
+
+                                                    // If it's a single word, just show the phonetic
+                                                    if (words.length === 1 && wordPhonetics[words[0].toLowerCase()]) {
+                                                        return <span>{wordPhonetics[words[0].toLowerCase()]}</span>;
+                                                    }
+
+                                                    // If it's a phrase, show phonetics for each word if available
+                                                    const phTexts = words.map((w: string, i: number) => {
+                                                        const p = wordPhonetics[w.toLowerCase()];
+                                                        if (!p) return null;
+                                                        return (
+                                                            <span key={i} className="flex items-center gap-1">
+                                                                {words.length > 1 && <span className="text-[10px] opacity-50 font-sans">{w}:</span>}
+                                                                <span>{p}</span>
+                                                            </span>
+                                                        );
+                                                    }).filter(Boolean);
+
+                                                    return phTexts.length > 0 ? phTexts : null;
+                                                })()}
+                                            </div>
+
                                             {selectedToken?.type === 'attention' && (
                                                 <div className="flex items-center gap-2 mt-1">
                                                     <span className="px-2 py-0.5 rounded text-[11px] font-bold uppercase tracking-wider bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400">

@@ -8,22 +8,27 @@
  * Includes a simple in-memory cache so repeated clicks don't re-fetch.
  */
 
-const audioCache = new Map<string, string>(); // word -> audioUrl
+interface WordPronunciation {
+  audioUrl: string | null;
+  phonetic: string | null;
+}
+
+const pronunciationCache = new Map<string, WordPronunciation>(); // word -> { audioUrl, phonetic }
 let currentAudio: HTMLAudioElement | null = null;
 // Cancellation token: increment to cancel any running sequence
 let cancelToken = 0;
 
 /**
- * Fetch the US pronunciation audio URL from Free Dictionary API.
- * Returns the audio URL string or null if unavailable.
+ * Fetch the US pronunciation audio URL and phonetic from Free Dictionary API.
+ * Returns the data object or null if unavailable.
  */
-async function fetchAudioUrl(word: string): Promise<string | null> {
+export async function getWordPronunciation(word: string): Promise<WordPronunciation | null> {
   const lower = word.toLowerCase().trim();
   if (!lower) return null;
 
   // Check cache first
-  if (audioCache.has(lower)) {
-    return audioCache.get(lower)!;
+  if (pronunciationCache.has(lower)) {
+    return pronunciationCache.get(lower)!;
   }
 
   try {
@@ -35,31 +40,59 @@ async function fetchAudioUrl(word: string): Promise<string | null> {
     const data = await res.json();
     if (!Array.isArray(data) || data.length === 0) return null;
 
-    // Look for US pronunciation audio first, then any audio
+    let bestAudio: string | null = null;
+    let bestPhonetic: string | null = null;
+
+    // Priority Pass 1: Look for US-specific audio and its associated text
+    // This solves words like "glass" which have both US and UK entries.
     for (const entry of data) {
-      if (!entry.phonetics || !Array.isArray(entry.phonetics)) continue;
-
-      // Priority 1: explicitly marked as US
-      for (const ph of entry.phonetics) {
-        if (ph.audio && (ph.audio.includes('-us') || ph.audio.includes('_us'))) {
-          audioCache.set(lower, ph.audio);
-          return ph.audio;
-        }
-      }
-
-      // Priority 2: any available audio
-      for (const ph of entry.phonetics) {
-        if (ph.audio && ph.audio.length > 0) {
-          audioCache.set(lower, ph.audio);
-          return ph.audio;
+      if (entry.phonetics && Array.isArray(entry.phonetics)) {
+        for (const ph of entry.phonetics) {
+          const isUS = ph.audio && (ph.audio.includes('-us') || ph.audio.includes('_us'));
+          if (isUS && ph.text) {
+            const result = { audioUrl: ph.audio, phonetic: ph.text };
+            pronunciationCache.set(lower, result);
+            return result;
+          }
         }
       }
     }
 
-    return null;
+    // Priority Pass 2: Fallback to any available audio and any available phonetic
+    // If we find US audio here, we'll keep it but continue to look for phonetic text.
+    for (const entry of data) {
+      if (entry.phonetic && !bestPhonetic) bestPhonetic = entry.phonetic;
+      
+      if (entry.phonetics && Array.isArray(entry.phonetics)) {
+        for (const ph of entry.phonetics) {
+          // Prefer US audio URL if found
+          if (ph.audio && (ph.audio.includes('-us') || ph.audio.includes('_us'))) {
+            bestAudio = ph.audio;
+          } else if (!bestAudio && ph.audio) {
+            bestAudio = ph.audio;
+          }
+
+          if (ph.text && !bestPhonetic) {
+            bestPhonetic = ph.text;
+          }
+        }
+      }
+    }
+
+    const result = { audioUrl: bestAudio, phonetic: bestPhonetic };
+    pronunciationCache.set(lower, result);
+    return result;
   } catch {
     return null;
   }
+}
+
+/**
+ * Legacy support/Internal helper for audio URL only
+ */
+async function fetchAudioUrl(word: string): Promise<string | null> {
+  const data = await getWordPronunciation(word);
+  return data?.audioUrl || null;
 }
 
 /**

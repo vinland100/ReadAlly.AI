@@ -397,7 +397,7 @@ class AIService:
         start_time = time.time()
         try:
             response = Generation.call(
-                model="qwen3-coder-plus",
+                model="qwen3.5-flash",
                 messages=[{'role': 'system', 'content': 'You are a strict JSON outputting AI assistant.'},
                           {'role': 'user', 'content': prompt}],
                 result_format='message'
@@ -440,7 +440,7 @@ class AIService:
         start_time = time.time()
         try:
             response = Generation.call(
-                model="qwen3-next-80b-a3b-instruct",
+                model="qwen3.5-flash",
                 messages=[{'role': 'system', 'content': 'You are a professional translator. Output only JSON.'},
                           {'role': 'user', 'content': prompt}],
                 result_format='message'
@@ -484,7 +484,7 @@ class AIService:
         """
         try:
             response = Generation.call(
-                model="qwen3-next-80b-a3b-instruct",
+                model="qwen3.5-flash",
                 messages=[{'role': 'system', 'content': 'You are a grammar expert. Output only JSON.'},
                           {'role': 'user', 'content': prompt}],
                 result_format='message'
@@ -508,7 +508,7 @@ class AIService:
         try:
             # Using the correct SDK class as per user instructions
             response = dashscope.MultiModalConversation.call(
-                model='qwen3-tts-flash',
+                model='qwen3-tts-instruct-flash',
                 text=text,
                 voice='Jennifer',
                 api_key=os.getenv("DASHSCOPE_API_KEY") ,
