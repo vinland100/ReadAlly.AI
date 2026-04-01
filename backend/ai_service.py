@@ -7,7 +7,7 @@ import time
 import logging
 from http import HTTPStatus
 import dashscope
-from dashscope import Generation
+from dashscope import Generation, MultiModalConversation
 from models import DifficultyLevel
 import requests
 
@@ -396,15 +396,16 @@ class AIService:
         logger.info(f"正在进行 AI 词汇分析 (长度: {len(text)} 字符)...")
         start_time = time.time()
         try:
-            response = Generation.call(
+            response = MultiModalConversation.call(
                 model="qwen3.5-flash",
-                messages=[{'role': 'system', 'content': 'You are a strict JSON outputting AI assistant.'},
-                          {'role': 'user', 'content': prompt}],
-                result_format='message'
+                messages=[
+                    {'role': 'system', 'content': [{'text': 'You are a strict JSON outputting AI assistant.'}]},
+                    {'role': 'user', 'content': [{'text': prompt}]}
+                ]
             )
 
             if response.status_code == HTTPStatus.OK:
-                content = response.output.choices[0].message.content.strip()
+                content = response.output.choices[0].message.content[0]['text'].strip()
                 # Clean markdown code blocks if present
                 if content.startswith("```json"):
                     content = content[7:]
@@ -439,19 +440,22 @@ class AIService:
         logger.info(f"正在进行 AI 翻译 (长度: {len(text)} 字符)...")
         start_time = time.time()
         try:
-            response = Generation.call(
+            response = MultiModalConversation.call(
                 model="qwen3.5-flash",
-                messages=[{'role': 'system', 'content': 'You are a professional translator. Output only JSON.'},
-                          {'role': 'user', 'content': prompt}],
-                result_format='message'
+                messages=[
+                    {'role': 'system', 'content': [{'text': 'You are a professional translator. Output only JSON.'}]},
+                    {'role': 'user', 'content': [{'text': prompt}]}
+                ]
             )
             if response.status_code == HTTPStatus.OK:
-                content = response.output.choices[0].message.content.strip()
+                content = response.output.choices[0].message.content[0]['text'].strip()
                 if content.startswith("```json"): content = content[7:]
                 if content.endswith("```"): content = content[:-3]
                 logger.info(f"AI 翻译完成，耗时: {time.time() - start_time:.2f}s")
                 return json.loads(content)
-            return {"translation": "Translation failed."}
+            else:
+                logger.error(f"AI 翻译错误: {response.code} - {response.message}")
+                return {"translation": "Translation failed."}
         except Exception as e:
             logger.error(f"翻译异常: {e}")
             return {"translation": "Translation error."}
@@ -483,18 +487,21 @@ class AIService:
         {text}
         """
         try:
-            response = Generation.call(
+            response = MultiModalConversation.call(
                 model="qwen3.5-flash",
-                messages=[{'role': 'system', 'content': 'You are a grammar expert. Output only JSON.'},
-                          {'role': 'user', 'content': prompt}],
-                result_format='message'
+                messages=[
+                    {'role': 'system', 'content': [{'text': 'You are a grammar expert. Output only JSON.'}]},
+                    {'role': 'user', 'content': [{'text': prompt}]}
+                ]
             )
             if response.status_code == HTTPStatus.OK:
-                content = response.output.choices[0].message.content.strip()
+                content = response.output.choices[0].message.content[0]['text'].strip()
                 if content.startswith("```json"): content = content[7:]
                 if content.endswith("```"): content = content[:-3]
                 return json.loads(content)
-            return {"error": "Analysis failed."}
+            else:
+                logger.error(f"AI 句法分析错误: {response.code} - {response.message}")
+                return {"error": "Analysis failed."}
         except Exception as e:
             logger.error(f"句法分析异常: {e}")
             return {"error": "Analysis error."}
@@ -510,9 +517,10 @@ class AIService:
             response = dashscope.MultiModalConversation.call(
                 model='qwen3-tts-instruct-flash',
                 text=text,
-                voice='Jennifer',
+                voice='Cherry',
                 api_key=os.getenv("DASHSCOPE_API_KEY") ,
-                language_type="English"
+                language_type="English",
+                instruction="Standard English pronunciation, clear and at a moderate speed, suitable for English pronunciation practice."
             )
 
             # Check successful response

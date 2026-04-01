@@ -1,18 +1,24 @@
-
 import requests
 import re
 import json
 import time
 import os
+import sys
 import shutil
 import logging
 from datetime import datetime, timedelta, timezone
+
+# Ensure backend root is in sys.path when running as a script
+if __name__ == "__main__":
+    _backend_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    if _backend_dir not in sys.path:
+        sys.path.append(_backend_dir)
+
 from sqlmodel import Session, select
 from database import engine
 from models import Article, Paragraph, DifficultyLevel
 from ai_service import AIService
 
-# China Standard Time
 # China Standard Time
 CN_TZ = timezone(timedelta(hours=8))
 
@@ -359,4 +365,11 @@ def fetch_shanbay_articles():
                 except Exception as e:
                     logger.error(f"文章 {art.id} 顺序处理失败: {e}")
 
-    logger.info("扇贝文章爬取和处理任务完成。")
+
+if __name__ == "__main__":
+    # Initial setup for manual run
+    from log_conf import setup_logging
+    setup_logging()
+    
+    # Trigger full crawl and process
+    fetch_shanbay_articles()
