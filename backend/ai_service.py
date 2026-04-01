@@ -1,4 +1,5 @@
 import os
+import re
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -507,44 +508,97 @@ class AIService:
             return {"error": "Analysis error."}
 
     @staticmethod
+    def _split_text(text: str, max_len: int = 500) -> list:
+        """
+        将长文本按标点切分成多个短块，每块不超过 max_len。
+        """
+        if len(text) <= max_len:
+            return [text]
+            
+        # 按句号、问号、感叹号、分号切分，保留分隔符
+        # 使用正向后瞻逻辑，保留标点
+        sentences = re.split(r'(?<=[.!?；;])\s+', text)
+        chunks = []
+        current_chunk = ""
+        
+        for s in sentences:
+            # 这里的空格处理要稍微小心，因为是拼接
+            if len(current_chunk) + len(s) + 1 < max_len:
+                current_chunk += (" " + s if current_chunk else s)
+            else:
+                if current_chunk:
+                    chunks.append(current_chunk.strip())
+                # 如果单句就超过 max_len，则硬切分（兜底逻辑）
+                if len(s) > max_len:
+                    for i in range(0, len(s), max_len):
+                        chunks.append(s[i:i+max_len])
+                    current_chunk = "" # 硬切分后重置
+                else:
+                    current_chunk = s
+                    
+        if current_chunk:
+            chunks.append(current_chunk.strip())
+        return chunks
+
+    @staticmethod
     def generate_tts(text: str) -> bytes:
         """
-        Generates TTS audio using Qwen3-TTS.
+        Generates TTS audio using Qwen3-TTS with text splitting.
         Returns the audio content (bytes) directly (MP3 format).
         """
-        try:
-            # Using the correct SDK class as per user instructions
-            response = dashscope.MultiModalConversation.call(
-                model='qwen3-tts-instruct-flash',
-                text=text,
-                voice='Cherry',
-                api_key=os.getenv("DASHSCOPE_API_KEY") ,
-                language_type="English",
-                instruction="Standard English pronunciation, clear and at a moderate speed, suitable for English pronunciation practice."
-            )
+        if not text:
+            return None
 
-            # Check successful response
-            if response.status_code == HTTPStatus.OK:
-                # Structure: response.output['audio']['url']
-                if hasattr(response, 'output') and response.output and 'audio' in response.output and 'url' in response.output['audio']:
-                    audio_url = response.output['audio']['url']
-                    # Download the audio
-                    r = requests.get(audio_url)
-                    if r.status_code == 200:
-                        return r.content
+        # 限制设为 500，留出 100 字符的余量应对特殊字符
+        chunks = AIService._split_text(text, max_len=500)
+        all_audio_bytes = b""
+        
+        if len(chunks) > 1:
+            logger.info(f"TTS 请求文本过长 ({len(text)} 字符), 将分为 {len(chunks)} 段处理")
+        
+        for i, chunk in enumerate(chunks):
+            try:
+                # Using the correct SDK class as per user instructions
+                response = dashscope.MultiModalConversation.call(
+                    model='qwen3-tts-instruct-flash',
+                    text=chunk,
+                    voice='Cherry',
+                    api_key=os.getenv("DASHSCOPE_API_KEY"),
+                    language_type="English",
+                    instruction="Standard English pronunciation, clear and at a moderate speed, suitable for English pronunciation practice."
+                )
+
+                # Check successful response
+                if response.status_code == HTTPStatus.OK:
+                    # Structure: response.output['audio']['url']
+                    if hasattr(response, 'output') and response.output and 'audio' in response.output and 'url' in response.output['audio']:
+                        audio_url = response.output['audio']['url']
+                        # Download the audio
+                        r = requests.get(audio_url)
+                        if r.status_code == 200:
+                            all_audio_bytes += r.content
+                            if len(chunks) > 1:
+                                logger.info(f"  - TTS 第 {i+1} 段处理完成")
+                        else:
+                            logger.error(f"TTS 下载错误 (段 {i+1}): {r.status_code}")
+                            # 如果是分段中失败，返回已有部分可能导致杂音，在此选择中断
+                            return None
                     else:
-                        logger.error(f"TTS 下载错误: {r.status_code}")
+                        logger.error(f"TTS 响应缺少音频 URL (段 {i+1}): {response}")
                         return None
                 else:
-                    logger.error(f"TTS 响应缺少音频 URL: {response}")
+                    logger.error(f"TTS API 错误 (段 {i+1}): {response.code} - {response.message}")
                     return None
-            else:
-                logger.error(f"TTS API 错误: {response.code} - {response.message}")
-                return None
+                
+                # 如果分段处理，稍微小睡一下，避免触发并发限制
+                if len(chunks) > 1:
+                    time.sleep(0.1)
 
-        except Exception as e:
-            logger.error(f"TTS 异常: {e}")
-            return None
+            except Exception as e:
+                logger.error(f"TTS 异常 (段 {i+1}): {e}")
+                return None
+                
+        return all_audio_bytes
 
 # Fix for SpeechSynthesizer import
 # Dashscope SDK structure might be slightly different.
